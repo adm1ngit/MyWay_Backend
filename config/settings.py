@@ -35,6 +35,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -43,6 +44,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
+
 
 ROOT_URLCONF = 'config.urls'
 
@@ -71,11 +75,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',  # Database adapter for PostgreSQL
-        'NAME': 'railway',  # Database name (use environment variable)
+        'NAME': 'postgres',  # Database name (use environment variable)
         'USER': 'postgres',  # Database username (use environment variable)
-        'PASSWORD': 'ehlTlZZhEFjiwHIogFgnsUdtEeLRlnVy',  # Database password (use environment variable)
-        'HOST': 'roundhouse.proxy.rlwy.net',  # Database host (default localhost)
-        'PORT': '51104',  # Database port (default 5432)
+        'PASSWORD': 'admin1129',  # Database password (use environment variable)
+        'HOST': 'localhost',  # Database host (default localhost)
+        'PORT': '5432',  # Database port (default 5432)
     }
 }
 
@@ -121,4 +125,4 @@ STATIC_URL = '/static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL = 'backend.CustomUser'
+# AUTH_USER_MODEL = 'backend.CustomUser'

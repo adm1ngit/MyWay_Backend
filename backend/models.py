@@ -4,25 +4,25 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 import secrets
 
-# Create your models here.
+#------Jarimalar YHQ ---------
+class Band(models.Model):
+    title = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    price_main = models.CharField(max_length=50)  # Store price as an integer
+    price_sale30 = models.CharField(max_length=50)  # Sale price with 30% discount (integer)
+    price_sale50 = models.CharField(max_length=50)  # Sale price with 50% discount (integer)
 
-class CustomUser(AbstractBaseUser):
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
-    email = models.EmailField(unique=True)
-
-    USERNAME_FIELD = ("email")
-    REQUIRED_FIELDS = ["first_name", "last_name"]
-
+class JarimaToifasi(models.Model):
+    name1 = models.CharField(max_length=250, unique=True)
     def __str__(self):
-        return self.email
-    
+        return self.name1
 
-class OtpToken(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="otps")
-    otp_code = models.CharField(max_length=6, default=secrets.token_hex(3))
-    tp_created_at = models.DateTimeField(auto_now_add=True)
-    otp_expires_at = models.DateTimeField(blank=True, null=True)
+class Jarima(models.Model):
+    name2 = models.TextField()
+    category = models.ForeignKey(JarimaToifasi, on_delete=models.CASCADE)
+    band = models.ManyToManyField(Band)
+    def __str__(self):
+        return self.name2
+#------Jarimalar YHQ END ---------
 
-    def __str__(self) -> str:
-        return self.user.first_name
+
