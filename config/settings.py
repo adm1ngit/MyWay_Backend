@@ -77,7 +77,11 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',  # Database adapter for PostgreSQL
         'NAME': 'postgres',  # Database name (use environment variable)
         'USER': 'postgres',  # Database username (use environment variable)
+<<<<<<< Updated upstream
         'PASSWORD': 'admin1129',  # Database password (use environment variable)
+=======
+        'PASSWORD': '24data',  # Database password (use environment variable)
+>>>>>>> Stashed changes
         'HOST': 'localhost',  # Database host (default localhost)
         'PORT': '5432',  # Database port (default 5432)
     }
@@ -125,4 +129,13 @@ STATIC_URL = '/static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+<<<<<<< Updated upstream
 # AUTH_USER_MODEL = 'backend.CustomUser'
+=======
+AUTH_USER_MODEL = 'backend.User'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = '587'
+EMAIL_USE_TLS = True
+>>>>>>> Stashed changes
