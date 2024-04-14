@@ -1,15 +1,17 @@
 from rest_framework import generics
 from .models import *
+from .serializers import *
+from django.shortcuts import render
 from rest_framework.views import APIView
+from rest_framework.response import Response
 from .serializers import *
 from .emails import *
-from rest_framework.response import Response
-
+# Create your views here.
 class JarimaListCreate(generics.ListCreateAPIView):
     queryset = Jarima.objects.all()
     serializer_class = JarimaSerializer
 
-# Create your views here.
+
 
 class RegisterAPI(APIView):
     def post(self, request):

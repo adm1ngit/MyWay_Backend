@@ -1,5 +1,6 @@
 from pathlib import Path
-
+import os
+import dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -12,6 +13,8 @@ SECRET_KEY = 'django-insecure-0rb7+sr&u7fzccq+ea(=dzk!c1h22pdqvc3kl1#4de0n95hv70
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+dotenv.load_dotenv()
 
 ALLOWED_HOSTS = []
 
@@ -72,6 +75,16 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+DATABASES = {
+    'default': {
+        'ENGINE': os.getenv("ENGINE"),  # Database adapter for PostgreSQL
+        'NAME': os.getenv("NAME"),  # Database name (use environment variable)
+        'USER': os.getenv("USER"),  # Database username (use environment variable)
+        'PASSWORD': os.getenv("PASSWORD"),  # Database password (use environment variable)
+        'HOST': os.getenv("HOST"),  # Database host (default localhost)
+        'PORT': os.getenv("PORT"),  # Database port (default 5432)
+    }
+}
 
 
 
