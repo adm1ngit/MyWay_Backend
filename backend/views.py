@@ -1,18 +1,14 @@
-<<<<<<< Updated upstream
 from rest_framework import generics
 from .models import *
+from rest_framework.views import APIView
 from .serializers import *
+from .emails import *
+from rest_framework.response import Response
 
 class JarimaListCreate(generics.ListCreateAPIView):
     queryset = Jarima.objects.all()
     serializer_class = JarimaSerializer
 
-=======
-from django.shortcuts import render
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from .serializers import *
-from .emails import *
 # Create your views here.
 
 class RegisterAPI(APIView):
@@ -45,4 +41,3 @@ class VerifyOtp(APIView):
             serializers = VerifyAccountSerializer(data=data)
         except Exception as e:
             print(e)
->>>>>>> Stashed changes

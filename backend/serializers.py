@@ -1,5 +1,4 @@
 from rest_framework import serializers
-<<<<<<< Updated upstream
 from .models import *
 
 #------Jarimalar YHQ ---------
@@ -21,8 +20,7 @@ class JarimaSerializer(serializers.ModelSerializer):
         model = Jarima
         fields = '__all__'
 #------Jarimalar YHQ END ---------
-=======
-from .models import User
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -33,4 +31,4 @@ class UserSerializer(serializers.ModelSerializer):
 class VerifyAccountSerializer(serializers.Serializer):
     email = serializers.EmailField()
     otp = serializers.CharField()
->>>>>>> Stashed changes
+

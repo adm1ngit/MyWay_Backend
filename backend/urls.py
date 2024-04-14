@@ -1,13 +1,7 @@
 from django.urls import path
-<<<<<<< Updated upstream
-from . import views
-
-urlpatterns = [
-    path('api/jarima/', views.JarimaListCreate.as_view()),
-=======
 from .views import *
 
 urlpatterns = [
+    path('api/jarima/', JarimaListCreate.as_view()),
     path('register/', RegisterAPI.as_view()),
->>>>>>> Stashed changes
 ]
