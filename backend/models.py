@@ -1,5 +1,7 @@
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import AbstractBaseUser, AbstractUser
 from django.db import models
+from shared.models import BaseModel
+
 
 
 
@@ -22,6 +24,8 @@ class Jarima(models.Model):
     band = models.ManyToManyField(Band)
     def __str__(self):
         return self.name2
+
+
 
 
 
