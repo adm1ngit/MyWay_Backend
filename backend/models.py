@@ -28,5 +28,6 @@ class Jarima(models.Model):
 
 
 
-
+class qoida(models.Model):
+    pass
 
