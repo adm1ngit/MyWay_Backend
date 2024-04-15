@@ -3,8 +3,6 @@ from .models import *
 
 admin.site.register(JarimaToifasi),
 admin.site.register(Jarima),
-admin.site.register(Band)
-
-# Register your models here.
+admin.site.register(Band),
 
 

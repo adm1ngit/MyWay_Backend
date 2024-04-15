@@ -22,13 +22,4 @@ class JarimaSerializer(serializers.ModelSerializer):
 #------Jarimalar YHQ END ---------
 
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['email', 'password', 'is_verified']
-
-
-class VerifyAccountSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    otp = serializers.CharField()
 
