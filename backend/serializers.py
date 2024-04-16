@@ -23,3 +23,4 @@ class JarimaSerializer(serializers.ModelSerializer):
 
 
 
+
