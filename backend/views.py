@@ -12,8 +12,10 @@ class JarimaListApi(generics.ListCreateAPIView):
 class YHQQoidaListApi(APIView):
     def get(self, request):
         yhqqoidalar = YHQQoida.objects.all()
-        serializer = YHQQoidaSerializer(yhqqoidalar, many=True)
+        serializer = YHQQoidaSerializer(yhqqoidalar, many=True, context={'request': request})
         return Response(serializer.data)
 
-
+class AddressesListApi(generics.ListCreateAPIView):
+    queryset = addresses.objects.all()
+    serializer_class = AddressesSerializer
 

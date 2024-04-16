@@ -29,3 +29,12 @@ class YHQQoidaSerializer(serializers.ModelSerializer):
         fields = ['id', 'text', 'img', 'category']
 
 # -------- YHQ Qoidalar END -----------------#
+
+#---------- Manzillar START------------------------#
+
+class AddressesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = addresses
+        fields = ['id', 'address', 'location']
+
+#---------- Manzillar END------------------------#

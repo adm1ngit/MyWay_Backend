@@ -39,6 +39,11 @@ class YHQQoida(models.Model):
 
 # -------- YHQ Qoidalar END -----------------#
 
+#---------- Manzillar START------------------------#
+class addresses(models.Model):
+    title = models.CharField(max_length=150)
+    address = models.CharField(max_length=250)
+    location = models.CharField(max_length=250)
 
 
-
+#---------- Manzillar END------------------------#

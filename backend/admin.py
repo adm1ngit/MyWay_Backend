@@ -6,5 +6,5 @@ admin.site.register(Jarima),
 admin.site.register(JarimaBandi),
 admin.site.register(YHQQoida),
 admin.site.register(YHQQoidalarCategory),
-admin.site.register(YHQQoidalar)
-
+admin.site.register(YHQQoidalar),
+admin.site.register(addresses)
