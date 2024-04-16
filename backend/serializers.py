@@ -23,6 +23,7 @@ class JarimaSerializer(serializers.ModelSerializer):
 
 # -------- YHQ Qoidalar START-----------------#
 class YHQQoidaSerializer(serializers.ModelSerializer):
+    img = serializers.ImageField(max_length=None, use_url=True)
     class Meta:
         model = YHQQoida
         fields = ['id', 'text', 'img', 'category']

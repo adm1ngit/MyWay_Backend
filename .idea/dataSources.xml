@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:sqlite:C:\Users\adminPC\Documents\GitHub\MyWay_Backend\db.sqlite3</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="sqlite3" uuid="8dae8e39-5677-4db0-b414-2b9c475946d1">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Users\ziyod\PycharmProjects\MyWay_Backend\sqlite3.db</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
