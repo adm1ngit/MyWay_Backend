@@ -1,13 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="db" uuid="c6176216-fa48-4e12-b122-978f85b00ac7">
-      <driver-ref>sqlite.xerial</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:C:\Users\adminPC\Documents\GitHub\MyWay_Backend\db.sqlite3</jdbc-url>
-      <working-dir>$ProjectFileDir$</working-dir>
-    </data-source>
     <data-source source="LOCAL" name="sqlite3" uuid="8dae8e39-5677-4db0-b414-2b9c475946d1">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
