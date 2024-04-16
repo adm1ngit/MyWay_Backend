@@ -99,9 +99,10 @@ class UserConfirmation(BaseModel):
         (VIA_PHONE, VIA_PHONE),
         (VIA_EMAIL, VIA_EMAIL)
     )
+
     code = models.CharField(max_length=4)
     verify_type = models.CharField(max_length=31, choices=TYPE_CHOICES)
-    user = models.ForeignKey('users.User', models.CASCADE, related_name='verify_codes')
+    user = models.ForeignKey('user.User', models.CASCADE, related_name='verify_codes')
     expiration_time = models.DateTimeField(null=True)
     is_confirmed = models.BooleanField(default=False)
 
