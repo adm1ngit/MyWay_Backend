@@ -2,7 +2,7 @@ from django.db import models
 import random
 import string
 
-class addCar(models.Model):
+class Car(models.Model):
     userName = models.CharField(max_length=150)
     email = models.EmailField()
     carNamber = models.CharField(max_length=10)

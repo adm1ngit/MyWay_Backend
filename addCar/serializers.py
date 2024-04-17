@@ -1,11 +1,10 @@
 from rest_framework import serializers
-from .models import addCar
-import random
-import string
+from .models import Car
+
 
 class addCarSerializer(serializers.ModelSerializer):
     class Meta:
-        model = addCar
+        model = Car
         fields = '__all__'
 
 

@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, AbstractUser
 from django.db import models
 
+
 #------Jarimalar YHQ START-------------#
 class JarimaBandi(models.Model):
     title = models.CharField(max_length=150)
@@ -46,4 +47,13 @@ class addresses(models.Model):
     location = models.CharField(max_length=250)
 
 
-#---------- Manzillar END------------------------#
+#---------- Manzillar END ------------------------#
+
+#---------- Texnik Xizmat Ko'rsatish START -----------------#
+class TexService(models.Model):
+    email = models.EmailField()
+    phone = models.CharField(max_length=50)
+    text = models.TextField()
+
+
+#---------- Texnik Xizmat Ko'rsatish START -----------------#
