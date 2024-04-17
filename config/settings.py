@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     #Local Apps
     'backend',
     'user',
+    'payments',
     #Install Apps
     'rest_framework',
     'corsheaders'
