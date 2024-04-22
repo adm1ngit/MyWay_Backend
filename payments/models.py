@@ -17,3 +17,13 @@ class Mechanic(models.Model):
     eventDate = models.DateField()
 
 # --------- Book mechanic END --------------#
+
+# ------------ Sug'urta START --------------------#
+class insurance(models.Model):
+    fullName = models.CharField(max_length=150)
+    email = models.EmailField()
+    phone = models.CharField(max_length=50)
+    insuranceTerm = models.DateField()
+    startDate  = models.DateField()
+
+# ------------ Sug'urta END ----------------------#
