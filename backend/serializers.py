@@ -2,39 +2,61 @@ from rest_framework import serializers
 from .models import *
 
 #------Jarimalar YHQ --------------#
-class JarimaToifasiSerializer(serializers.ModelSerializer):
+class JarimaBooksSerializer(serializers.ModelSerializer):
     class Meta:
-        model = JarimaToifasi
+        model = JarimaBook
         fields = '__all__'
 
-class BandSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = JarimaBandi
-        fields = ['title', 'description', 'price_main', 'price_sale30', 'price_sale50']
-
-class JarimaSerializer(serializers.ModelSerializer):
-    category = JarimaToifasiSerializer()
-    Band = BandSerializer(read_only=True)
-
-    class Meta:
-        model = Jarima
-        fields = '__all__'
 #------Jarimalar YHQ END --------------#
 
 # -------- YHQ Qoidalar START-----------------#
-class YHQQoidaSerializer(serializers.ModelSerializer):
-    img = serializers.ImageField(max_length=None, use_url=True)
+class YHQQoidalarBookSerializer(serializers.ModelSerializer):
     class Meta:
-        model = YHQQoida
-        fields = ['id', 'text', 'img', 'category']
+        model = YHQQoidalarBook
+        fields = '__all__'
 
 # -------- YHQ Qoidalar END -----------------#
 
 #---------- Manzillar START------------------------#
 
-class AddressesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = addresses
-        fields = ['id', 'address', 'location']
+
 
 #---------- Manzillar END------------------------#
+
+#-----------            ---------------------------#
+class GasSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Gas
+        fields = '__all__'
+#-----------            ---------------------------#
+
+#-----------            ---------------------------#
+class CarOilSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CarOil
+        fields = '__all__'
+
+#-----------            ---------------------------#
+
+#---------------- Ishonchnoma START ----------------------#
+class AffidavitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Affidavit
+        fields = '__all__'
+
+#---------------- Ishonchnoma END ------------------------#
+
+class TexServiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TexServiceMessage
+        fields = '__all__'
+
+class RestoreLicenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestoreLicense
+        fields = '__all__'
+
+class AutoTestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AutoTest
+        fields = '__all__'
