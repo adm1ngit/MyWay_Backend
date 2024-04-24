@@ -1,4 +1,5 @@
 import logging
+import os
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -21,11 +22,11 @@ class RegisterUserView(APIView):
         serializer = RegisterUserSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        account_sid = 'ACcac4eda9afbdfd1baa41a505bf529881'
-        auth_token = '698da838805af6db9f6db39ec439b23d'
+        account_sid = os.getenv("ACCOUNT_SID")
+        auth_token = os.getenv("AUTH_TOKEN")
         client = Client(account_sid, auth_token)
 
-        verification_service_sid = 'VA0947291ef7e2bba722c642e3c4891386'
+        verification_service_sid = os.getenv("VERIFICATION_SERVICE_SID")
         verification = client.verify \
                              .services(verification_service_sid) \
                              .verifications \
@@ -47,9 +48,9 @@ class VerifyUserView(APIView):
         if not phone_number or not verification_code:
             return Response({'message': 'Telefon raqami yoki tasdiqlash kodini kiritish talab qilinadi'}, status=status.HTTP_400_BAD_REQUEST)
 
-        verification_service_sid = "VA0947291ef7e2bba722c642e3c4891386"
-        account_sid = "ACcac4eda9afbdfd1baa41a505bf529881"
-        auth_token = "698da838805af6db9f6db39ec439b23d"
+        verification_service_sid = os.getenv("VERIFICATION_SERVICE_SID")
+        account_sid = os.getenv("ACCOUNT_SID")
+        auth_token = os.getenv("AUTH_TOKEN")
         client = Client(account_sid, auth_token)
 
         try:
@@ -121,7 +122,7 @@ class PasswordResetRequestView(APIView):
             user = User.objects.get(email=email)
         except User.DoesNotExist:
             return Response({'message': "Foydalanuvchi topilmadi"}, status=status.HTTP_404_NOT_FOUND)
-        new_password = get_random_string(10)  # Tasodifiy 10-harfdan iborat parol
+        new_password = get_random_string(10)
         send_mail(
             "Parolni tiklash",
             f"Sizning yangi parolingiz: {new_password}",
