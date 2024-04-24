@@ -2,20 +2,13 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
-from dotenv import load_dotenv
-
-load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-0rb7+sr&u7fzccq+ea(=dzk!c1h22pdqvc3kl1#4de0n95hv70'
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 load_dotenv()
@@ -35,8 +28,8 @@ INSTALLED_APPS = [
     #Local Apps
     'backend',
     'user',
-    'payments',
     'addCar',
+    'payments',
     #Install Apps
     'rest_framework',
     'corsheaders'
@@ -53,16 +46,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# REST_FRAMEWORK ={
-#     'DEFAULT_PERMISSION_CLASSES': [
-#         "rest_framework.permissions.IsAuthenticated", ],
-#     "DEFAULT_AUTHENTICATION_CLASSES": [
-#         'rest_framework.authentication.TokenAuthentication',
-#         'rest_framework_simplejwt.authentication.JWTAuthentication',
-#     ]
-# }
-
-
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
+}
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
@@ -113,7 +101,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, "templates")],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -132,31 +120,16 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': 'sqlite3.db',
-#     }
-# }
-
-DB_ENGINE = os.getenv('DB_ENGINE')
-DB_NAME = os.getenv('DB_NAME')
-DB_USER = os.getenv('DB_USER')
-DB_PASSWORD = os.getenv('DB_PASSWORD')
-DB_HOST = os.getenv('DB_HOST')
-DB_PORT = os.getenv('DB_PORT')
-
-# DATABASES sozlamalari
 DATABASES = {
     'default': {
-        'ENGINE': DB_ENGINE,
-        'NAME': DB_NAME,
-        'USER': DB_USER,
-        'PASSWORD': DB_PASSWORD,
-        'HOST': DB_HOST,
-        'PORT': DB_PORT,
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'sqlite3.db',  # Replace with your desired database filename
     }
 }
+
+
+
+
 
 
 # Password validation
@@ -202,5 +175,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'user.User'
 
+ACCOUNT_SID = os.getenv('ACCOUNT_SID')
+AUTH_TOKEN = os.getenv('AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
 
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587  # Mailtrap port for non-TLS
+EMAIL_HOST_USER = '4dm1n217@gmail.com'
+EMAIL_HOST_PASSWORD = 'ryid lfuh kdps ibif'
+EMAIL_USE_TLS = True  # Set to True for TLS
+
