@@ -57,3 +57,11 @@ class UserVerification(models.Model):
     verified = models.BooleanField(default=False)
     phone_verification_code = models.CharField(max_length=6)
     phone_verified = models.BooleanField(default=False)
+
+
+class LoginUserVerification(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    phone_number = models.CharField(max_length=15, unique=True)  # Assuming unique phone numbers
+    email = models.EmailField(unique=True)  # Assuming unique emails
+    phone_verified = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)

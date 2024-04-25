@@ -41,4 +41,9 @@ class UserVerificationSerializer(serializers.ModelSerializer):
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
+class LoginUserVerificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserVerification
+        fields = ("phone_verification_code", "email_verification_code")
+
 

@@ -1,5 +1,6 @@
 import logging
 import os
+from django.contrib.auth import authenticate, login
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -9,7 +10,7 @@ import random
 from django.core.mail import send_mail
 from twilio.rest import Client
 from django.utils.crypto import get_random_string
-from .models import UserVerification, User, UserManager
+from .models import UserVerification, User
 
 
 logger = logging.getLogger(__name__)
@@ -82,8 +83,7 @@ class SendVerificationCodeView(APIView):
         message = f"Your verification code is: {verification_code}"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
 
-        if send_mail:  # Check if mail was sent successfully (not foolproof)
-            # Save verification code to database if sending was successful
+        if send_mail:
             user_verification, created = UserVerification.objects.get_or_create(email=email)
             user_verification.verification_code = verification_code
             user_verification.save()
@@ -133,3 +133,51 @@ class PasswordResetRequestView(APIView):
         user.set_password(new_password)
         user.save()
         return Response({'message': "Yangi parol emailga yuborildi"}, status=status.HTTP_200_OK)
+
+
+class LoginView(APIView):
+    def post(self, request):
+        serializer = LoginUserVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        phone_number = request.data.get("phone_number")
+        email = request.data.get("email")
+
+        # Check if user exists (optional, based on your use case)
+        try:
+            user = User.objects.get(email=email)  # Assuming email is used for login
+        except User.DoesNotExist:
+            return Response({"message": "Foydalanuvchi Topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Generate verification codes
+        phone_verification_code = str(random.randint(100000, 999999))
+        email_verification_code = str(random.randint(100000, 999999))
+
+        # Save or update verification codes
+        user_verification, created = UserVerification.objects.get_or_create(user=user)
+        user_verification.phone_number = phone_number  # Update phone number if not provided earlier
+        user_verification.phone_verification_code = phone_verification_code
+        user_verification.email_verification_code = email_verification_code
+        user_verification.save()
+
+        # Send verification codes (Phone and Email)
+        account_sid = os.getenv("ACCOUNT_SID")
+        auth_token = os.getenv("AUTH_TOKEN")
+        client = Client(account_sid, auth_token)
+        if phone_number:  # Send SMS if phone number provided
+            client.messages.create(
+                 to=phone_number,
+                 from_=os.getenv("TWILIO_PHONE_NUMBER"),
+                 body=f"Your phone verification code is: {phone_verification_code}"
+            )
+
+        if email:  # Send email if email provided
+            subject = "Email Verification Code"
+            message = f"Your email verification code is: {email_verification_code}"
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+
+        return Response({"message": "Verification codes sent."}, status=status.HTTP_200_OK)
+
+
+
+
