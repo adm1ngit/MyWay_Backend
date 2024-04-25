@@ -2,26 +2,6 @@ from django.contrib.auth.models import AbstractBaseUser, AbstractUser
 from django.db import models
 
 
-#------Jarimalar YHQ START-------------#
-
-class JarimaBook(models.Model):
-    title = models.CharField(max_length=150)
-    url = models.FileField(upload_to='Books')
-    def __str__(self):
-        return self.title
-#------ Jarimalar YHQ END --------------#
-
-# -------- YHQ Qoidalar START-----------------#
-class YHQQoidlarCategory(models.Model):
-    categoryName = models.CharField(max_length=150)
-class YHQQoidalarBook(models.Model):
-    title = models.CharField(max_length=300)
-    category = models.ForeignKey(YHQQoidlarCategory, on_delete=models.CASCADE)
-    def __str__(self):
-        return self.title
-
-# -------- YHQ Qoidalar END -----------------#
-
 #---------- Manzillar START ------------------------#
 class ServiceAddres(models.Model):
     title = models.CharField(max_length=150)
@@ -66,14 +46,14 @@ class CarOil(models.Model):
 #---------------- Ishonchnoma START ----------------------#
 class Affidavit(models.Model):
     fName = models.CharField(max_length=150)
-    guvoxnomaNum = models.IntegerField(max_length=150)
+    guvoxnomaNum = models.IntegerField(20)
     startDate = models.DateField()
     endDate = models.DateField()
     lifeTime = models.CharField(max_length=150)
     givenName = models.CharField(max_length=150)
     pasSeria = models.CharField(max_length=2, blank=True)
-    pasNum = models.IntegerField(max_length=6, blank=True)
-    guvoxnoma2Num = models.IntegerField(max_length=150)
+    pasNum = models.IntegerField(6, blank=True)
+    guvoxnoma2Num = models.IntegerField(150)
 
     def __str__(self):
         return self.fName
@@ -83,7 +63,7 @@ class Affidavit(models.Model):
 #---------------- Texnik xizmat ko'rsatish START --------------------#
 class TexServiceMessage(models.Model):
     email = models.EmailField(max_length=150)
-    phoneNumber = models.IntegerField(max_length=50)
+    phoneNumber = models.IntegerField()
     event = models.CharField(max_length=250)
     def __str__(self):
         return self.email
@@ -92,7 +72,7 @@ class TexServiceMessage(models.Model):
 #---------------- Haydovchilik guvohnomasini tiklash START ----------------#
 class RestoreLicense(models.Model):
     fName = models.CharField(max_length=150)
-    licenseNumber = models.IntegerField(max_length=150)
+    licenseNumber = models.IntegerField()
     startDate = models.DateField()
     endDate = models.DateField()
     phoneNum = models.CharField(max_length=150)
@@ -106,5 +86,7 @@ class RestoreLicense(models.Model):
 class AutoTest(models.Model):
     trueAnswer = models.IntegerField(default=0)
     falseAnswer = models.IntegerField(default=0)
+    fullAnswer = models.IntegerField(default=0)
+    testID = models.IntegerField(default=0)
     date = models.DateField()
 #---------------- Avtotest  START -----------------------------------#
