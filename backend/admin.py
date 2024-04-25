@@ -1,8 +1,6 @@
 from django.contrib import admin
 from .models import *
 
-admin.site.register([JarimaBook, JarimaBookCategory])
-admin.site.register([YHQQoidalarBook, YHQQoidlarCategory]),
 admin.site.register(ServiceAddres),
 admin.site.register(TexServiceOrder),
 admin.site.register([Gas, CarOil]),

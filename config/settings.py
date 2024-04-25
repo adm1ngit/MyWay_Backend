@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'user',
     'payments',
     'addCar',
+    'Book',
     #Install Apps
     'rest_framework',
     'corsheaders'
