@@ -1,0 +1,1141 @@
+Index: user/models.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from django.contrib.auth.models import AbstractBaseUser, BaseUserManager\r\nfrom django.db import models\r\n\r\nclass UserManager(BaseUserManager):\r\n    def create_user(self, phone_number, first_name, last_name, email, password=None):\r\n        if not phone_number:\r\n            raise ValueError('Users must have a phone number')\r\n        user = self.model(\r\n            phone_number=phone_number,\r\n            first_name=first_name,\r\n            last_name=last_name,\r\n            email=email,\r\n        )\r\n        user.set_password(password)\r\n        user.save(using=self._db)\r\n        return user\r\n\r\n    def create_superuser(self, phone_number, first_name, last_name, email=None, password=None):\r\n        user = self.create_user(phone_number, first_name, last_name, email, password)\r\n        user.is_staff = True\r\n        user.is_superuser = True\r\n        user.save(using=self._db)\r\n        return user\r\n\r\nclass User(AbstractBaseUser):\r\n    phone_number = models.CharField(max_length=15, unique=True)\r\n    first_name = models.CharField(max_length=30)\r\n    last_name = models.CharField(max_length=30)\r\n    email = models.EmailField(blank=True, null=True)\r\n    password = models.CharField(max_length=128)\r\n    is_active = models.BooleanField(default=True)\r\n    is_staff = models.BooleanField(default=False)\r\n    is_superuser = models.BooleanField(default=False)\r\n    is_verified = models.BooleanField(default=False)\r\n\r\n    USERNAME_FIELD = \"phone_number\"\r\n    REQUIRED_FIELDS = ['first_name', 'last_name']\r\n\r\n    objects = UserManager()\r\n\r\n    def __str__(self):\r\n        return self.phone_number\r\n\r\n    def has_perm(self, perm, obj=None):\r\n        return self.is_staff\r\n\r\n    def has_module_perms(self, app_label):\r\n        return self.is_staff\r\n\r\n    class Meta:\r\n        verbose_name = 'user'\r\n        verbose_name_plural = 'users'\r\n\r\nclass UserVerification(models.Model):\r\n    email = models.EmailField(unique=True)\r\n    verification_code = models.CharField(max_length=6)\r\n    verified = models.BooleanField(default=False)\r\n    phone_verification_code = models.CharField(max_length=6)\r\n    phone_verified = models.BooleanField(default=False)\r\n\r\n\r\nclass LoginUserVerification(models.Model):\r\n    user = models.ForeignKey(User, on_delete=models.CASCADE)\r\n    phone_number = models.CharField(max_length=15, unique=True)  # Assuming unique phone numbers\r\n    email = models.EmailField(unique=True)  # Assuming unique emails\r\n    phone_verified = models.BooleanField(default=False)\r\n    email_verified = models.BooleanField(default=False)\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/user/models.py b/user/models.py
+--- a/user/models.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ b/user/models.py	(date 1714089354350)
+@@ -51,17 +51,18 @@
+         verbose_name = 'user'
+         verbose_name_plural = 'users'
+ 
+-class UserVerification(models.Model):
+-    email = models.EmailField(unique=True)
+-    verification_code = models.CharField(max_length=6)
+-    verified = models.BooleanField(default=False)
+-    phone_verification_code = models.CharField(max_length=6)
+-    phone_verified = models.BooleanField(default=False)
+-
++# class UserVerification(models.Model):
++#     email = models.EmailField(unique=True)
++#     verification_code = models.CharField(max_length=6)
++#     verified = models.BooleanField(default=False)
++#     phone_verification_code = models.CharField(max_length=6)
++#     phone_verified = models.BooleanField(default=False)
+ 
+ class LoginUserVerification(models.Model):
+     user = models.ForeignKey(User, on_delete=models.CASCADE)
+     phone_number = models.CharField(max_length=15, unique=True)  # Assuming unique phone numbers
+-    email = models.EmailField(unique=True)  # Assuming unique emails
++    email = models.EmailField(unique=True)
++    phone_verification_code = models.CharField(max_length=6)
+     phone_verified = models.BooleanField(default=False)
++    email_verification_code = models.CharField(max_length=6)
+     email_verified = models.BooleanField(default=False)
+Index: user/views.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>import logging\r\nimport os\r\nfrom django.contrib.auth import authenticate, login\r\nfrom django.conf import settings\r\nfrom rest_framework.views import APIView\r\nfrom rest_framework.response import Response\r\nfrom rest_framework import status\r\nfrom .serializers import *\r\nimport random\r\nfrom django.core.mail import send_mail\r\nfrom twilio.rest import Client\r\nfrom django.utils.crypto import get_random_string\r\nfrom .models import UserVerification, User\r\n\r\n\r\nlogger = logging.getLogger(__name__)\r\n\r\n\r\n\r\n\r\nclass RegisterUserView(APIView):\r\n    def post(self, request):\r\n        serializer = RegisterUserSerializer(data=request.data)\r\n        serializer.is_valid(raise_exception=True)\r\n        user = serializer.save()\r\n        account_sid = os.getenv(\"ACCOUNT_SID\")\r\n        auth_token = os.getenv(\"AUTH_TOKEN\")\r\n        client = Client(account_sid, auth_token)\r\n\r\n        verification_service_sid = os.getenv(\"VERIFICATION_SERVICE_SID\")\r\n        verification = client.verify \\\r\n                             .services(verification_service_sid) \\\r\n                             .verifications \\\r\n                             .create(to=user.phone_number, channel='sms')\r\n\r\n        if verification.status == 'pending':\r\n            return Response({'message': 'Verification code sent to your phone number.'}, status=status.HTTP_201_CREATED)\r\n        else:\r\n            return Response({'message': 'Failed to send verification code.'}, status=status.HTTP_400_BAD_REQUEST)\r\n\r\n\r\n\r\n\r\nclass VerifyUserView(APIView):\r\n    def post(self, request):\r\n        phone_number = request.data.get('phone_number')\r\n        verification_code = request.data.get('verification_code')\r\n\r\n        if not phone_number or not verification_code:\r\n            return Response({'message': 'Telefon raqami yoki tasdiqlash kodini kiritish talab qilinadi'}, status=status.HTTP_400_BAD_REQUEST)\r\n\r\n        verification_service_sid = os.getenv(\"VERIFICATION_SERVICE_SID\")\r\n        account_sid = os.getenv(\"ACCOUNT_SID\")\r\n        auth_token = os.getenv(\"AUTH_TOKEN\")\r\n        client = Client(account_sid, auth_token)\r\n\r\n        try:\r\n            verification_check = client.verify \\\r\n                                       .services(verification_service_sid) \\\r\n                                       .verification_checks \\\r\n                                       .create(to=phone_number, code=verification_code)\r\n            if verification_check.status == 'approved':\r\n                return Response({'message': \"Tasdiqlash muvaffaqiyatli Amalga Oshirildi\"}, status=status.HTTP_200_OK)\r\n            else:\r\n                return Response({'message': \"Noto'g'ri tasdiqlash kod\"}, status=status.HTTP_400_BAD_REQUEST)\r\n        except Exception as e:\r\n            return Response({'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)\r\n\r\n\r\n\r\nclass SendVerificationCodeView(APIView):\r\n    def post(self, request):\r\n        serializer = UserVerificationSerializer(data=request.data)\r\n        serializer.is_valid(raise_exception=True)\r\n\r\n        email = serializer.validated_data[\"email\"]\r\n\r\n        # Generate verification code\r\n        verification_code = str(random.randint(100000, 999999))\r\n\r\n        # Send verification code using SMTP\r\n        subject = \"Verification Code\"\r\n        message = f\"Your verification code is: {verification_code}\"\r\n        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])\r\n\r\n        if send_mail:\r\n            user_verification, created = UserVerification.objects.get_or_create(email=email)\r\n            user_verification.verification_code = verification_code\r\n            user_verification.save()\r\n\r\n            return Response({\"message\": \"Verification code sent successfully.\"}, status=status.HTTP_200_OK)\r\n        else:\r\n            return Response({\"message\": \"Failed to send verification code.\"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)\r\n\r\n\r\n\r\nclass VerifyVerificationCodeView(APIView):\r\n    def post(self, request):\r\n        email = request.data.get(\"email\")\r\n        verification_code = request.data.get(\"verification_code\")\r\n\r\n        if not email or not verification_code:\r\n            return Response({\"message\": \"Email va tasdiqlash kodi kiritishingiz shart.\"}, status=status.HTTP_400_BAD_REQUEST)\r\n\r\n        try:\r\n            user_verification = UserVerification.objects.get(email=email, verification_code=verification_code)\r\n            if not user_verification.verified:\r\n                user_verification.verified = True\r\n                user_verification.save()\r\n                return Response({\"message\": \"Verification successful.\"}, status=status.HTTP_200_OK)\r\n            else:\r\n                return Response({\"message\": \"Email has already been verified.\"}, status=status.HTTP_400_BAD_REQUEST)\r\n        except UserVerification.DoesNotExist:\r\n            return Response({\"message\": \"Invalid verification code.\"}, status=status.HTTP_400_BAD_REQUEST)\r\n\r\nclass PasswordResetRequestView(APIView):\r\n    def post(self, request, *args, **kwargs):\r\n        email = request.data.get('email')\r\n        if not email:\r\n            return Response({'message': \"Email manzilini kiritishingiz kerak.\"}, status=status.HTTP_400_BAD_REQUEST)\r\n        try:\r\n            user = User.objects.get(email=email)\r\n        except User.DoesNotExist:\r\n            return Response({'message': \"Foydalanuvchi topilmadi\"}, status=status.HTTP_404_NOT_FOUND)\r\n        new_password = get_random_string(10)\r\n        send_mail(\r\n            \"Parolni tiklash\",\r\n            f\"Sizning yangi parolingiz: {new_password}\",\r\n            \"4dm1n217@gmail.com.com\",\r\n            [email],\r\n            fail_silently=False,\r\n        )\r\n        user.set_password(new_password)\r\n        user.save()\r\n        return Response({'message': \"Yangi parol emailga yuborildi\"}, status=status.HTTP_200_OK)\r\n\r\n\r\nclass LoginView(APIView):\r\n    def post(self, request):\r\n        serializer = LoginUserVerificationSerializer(data=request.data)\r\n        serializer.is_valid(raise_exception=True)\r\n\r\n        phone_number = request.data.get(\"phone_number\")\r\n        email = request.data.get(\"email\")\r\n\r\n        # Check if user exists (optional, based on your use case)\r\n        try:\r\n            user = User.objects.get(email=email)  # Assuming email is used for login\r\n        except User.DoesNotExist:\r\n            return Response({\"message\": \"Foydalanuvchi Topilmadi\"}, status=status.HTTP_404_NOT_FOUND)\r\n\r\n        # Generate verification codes\r\n        phone_verification_code = str(random.randint(100000, 999999))\r\n        email_verification_code = str(random.randint(100000, 999999))\r\n\r\n        # Save or update verification codes\r\n        user_verification, created = UserVerification.objects.get_or_create(user=user)\r\n        user_verification.phone_number = phone_number  # Update phone number if not provided earlier\r\n        user_verification.phone_verification_code = phone_verification_code\r\n        user_verification.email_verification_code = email_verification_code\r\n        user_verification.save()\r\n\r\n        # Send verification codes (Phone and Email)\r\n        account_sid = os.getenv(\"ACCOUNT_SID\")\r\n        auth_token = os.getenv(\"AUTH_TOKEN\")\r\n        client = Client(account_sid, auth_token)\r\n        if phone_number:  # Send SMS if phone number provided\r\n            client.messages.create(\r\n                 to=phone_number,\r\n                 from_=os.getenv(\"TWILIO_PHONE_NUMBER\"),\r\n                 body=f\"Your phone verification code is: {phone_verification_code}\"\r\n            )\r\n\r\n        if email:  # Send email if email provided\r\n            subject = \"Email Verification Code\"\r\n            message = f\"Your email verification code is: {email_verification_code}\"\r\n            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])\r\n\r\n        return Response({\"message\": \"Verification codes sent.\"}, status=status.HTTP_200_OK)\r\n\r\n\r\n\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/user/views.py b/user/views.py
+--- a/user/views.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ b/user/views.py	(date 1714111686203)
+@@ -1,5 +1,7 @@
+ import logging
+-import os
++import smtplib
++from email.mime.multipart import MIMEMultipart
++from email.mime.text import MIMEText
+ from django.contrib.auth import authenticate, login
+ from django.conf import settings
+ from rest_framework.views import APIView
+@@ -10,7 +12,7 @@
+ from django.core.mail import send_mail
+ from twilio.rest import Client
+ from django.utils.crypto import get_random_string
+-from .models import UserVerification, User
++from .models import *
+ 
+ 
+ logger = logging.getLogger(__name__)
+@@ -27,7 +29,7 @@
+         auth_token = os.getenv("AUTH_TOKEN")
+         client = Client(account_sid, auth_token)
+ 
+-        verification_service_sid = os.getenv("VERIFICATION_SERVICE_SID")
++        verification_service_sid = os.getenv("VERIFY_SERVICE_SID")
+         verification = client.verify \
+                              .services(verification_service_sid) \
+                              .verifications \
+@@ -48,8 +50,7 @@
+ 
+         if not phone_number or not verification_code:
+             return Response({'message': 'Telefon raqami yoki tasdiqlash kodini kiritish talab qilinadi'}, status=status.HTTP_400_BAD_REQUEST)
+-
+-        verification_service_sid = os.getenv("VERIFICATION_SERVICE_SID")
++        verification_service_sid = os.getenv("VERIFY_SERVICE_SID")
+         account_sid = os.getenv("ACCOUNT_SID")
+         auth_token = os.getenv("AUTH_TOKEN")
+         client = Client(account_sid, auth_token)
+@@ -70,7 +71,7 @@
+ 
+ class SendVerificationCodeView(APIView):
+     def post(self, request):
+-        serializer = UserVerificationSerializer(data=request.data)
++        serializer = LoginUserVerificationSerializer(data=request.data)
+         serializer.is_valid(raise_exception=True)
+ 
+         email = serializer.validated_data["email"]
+@@ -84,7 +85,7 @@
+         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
+ 
+         if send_mail:
+-            user_verification, created = UserVerification.objects.get_or_create(email=email)
++            user_verification, created = LoginUserVerification.objects.get_or_create(email=email)
+             user_verification.verification_code = verification_code
+             user_verification.save()
+ 
+@@ -103,14 +104,14 @@
+             return Response({"message": "Email va tasdiqlash kodi kiritishingiz shart."}, status=status.HTTP_400_BAD_REQUEST)
+ 
+         try:
+-            user_verification = UserVerification.objects.get(email=email, verification_code=verification_code)
++            user_verification = LoginUserVerification.objects.get(email=email, verification_code=verification_code)
+             if not user_verification.verified:
+                 user_verification.verified = True
+                 user_verification.save()
+                 return Response({"message": "Verification successful."}, status=status.HTTP_200_OK)
+             else:
+                 return Response({"message": "Email has already been verified."}, status=status.HTTP_400_BAD_REQUEST)
+-        except UserVerification.DoesNotExist:
++        except LoginUserVerification.DoesNotExist:
+             return Response({"message": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
+ 
+ class PasswordResetRequestView(APIView):
+@@ -154,7 +155,7 @@
+         email_verification_code = str(random.randint(100000, 999999))
+ 
+         # Save or update verification codes
+-        user_verification, created = UserVerification.objects.get_or_create(user=user)
++        user_verification, created = LoginUserVerification.objects.get_or_create(user=user)
+         user_verification.phone_number = phone_number  # Update phone number if not provided earlier
+         user_verification.phone_verification_code = phone_verification_code
+         user_verification.email_verification_code = email_verification_code
+@@ -171,13 +172,60 @@
+                  body=f"Your phone verification code is: {phone_verification_code}"
+             )
+ 
+-        if email:  # Send email if email provided
++        if email:
+             subject = "Email Verification Code"
+             message = f"Your email verification code is: {email_verification_code}"
+-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
++            msg = MIMEMultipart()
++            msg['From'] = settings.EMAIL_HOST_USER
++            msg['To'] = email
++            msg['Subject'] = subject
++            msg.attach(MIMEText(message, 'plain'))
++
++            # Establish a secure session with your SMTP server
++            server = smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT)
++            server.starttls()
++            server.login(settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD)
++            text = msg.as_string()
++            server.sendmail(settings.EMAIL_HOST_USER, email, text)
++            server.quit()
+ 
+         return Response({"message": "Verification codes sent."}, status=status.HTTP_200_OK)
+ 
++class VerifyLoginView(APIView):
++    def post(self, request):
++        serializer = LoginUserVerificationSerializer(data=request.data)
++        serializer.is_valid(raise_exception=True)
++
++        phone_verification_code = serializer.validated_data['phone_verification_code']
++        email_verification_code = serializer.validated_data.get('email_verification_code')
++
++        # Retrieve user based on phone number or email (depending on your logic)
++        try:
++            if phone_verification_code:  # Check phone verification code first (if provided)
++                user_verification = LoginUserVerification.objects.get(phone_verification_code=phone_verification_code)
++                user = user_verification.user
++            elif email_verification_code:  # Check email verification code if phone not provided
++                user_verification = LoginUserVerification.objects.get(email_verification_code=email_verification_code)
++                user = user_verification.user
++            else:
++                return Response({"message": "Please provide either phone or email verification code."}, status=status.HTTP_400_BAD_REQUEST)
++        except LoginUserVerification.DoesNotExist:
++            return Response({"message": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
++
++        # Verify both phone and email if verification codes were provided for both
++        phone_verified = phone_verification_code and user_verification.phone_verification_code == phone_verification_code
++        email_verified = email_verification_code and user_verification.email_verification_code == email_verification_code
++
++        if not (phone_verified and email_verified):
++            return Response({"message": "Both phone and email verification required."}, status=status.HTTP_400_BAD_REQUEST)
++
++        user = authenticate(phone_number=user.phone_number)
++        if user is not None:
++            login(request, user)
++            return Response({"message": "Login successful."}, status=status.HTTP_200_OK)
++        else:
++            return Response({"message": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
++
+ 
+ 
+ 
+Index: user/serializers.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from rest_framework import serializers\r\nfrom .models import *\r\nfrom twilio.rest import Client\r\nimport os\r\n\r\nclass RegisterUserSerializer(serializers.ModelSerializer):\r\n    password = serializers.CharField(write_only=True)\r\n    confirm_password = serializers.CharField(write_only=True)\r\n\r\n    class Meta:\r\n        model = User  # Update with your model name\r\n        fields = ['first_name', 'last_name', 'phone_number', 'email', 'password', 'confirm_password']\r\n\r\n    def create(self, validated_data):\r\n        user = User.objects.create_user(\r\n            first_name=validated_data['first_name'],\r\n            last_name=validated_data['last_name'],\r\n            phone_number=validated_data['phone_number'],\r\n            email=validated_data.get('email'),  # Optional\r\n            password=validated_data['password'],\r\n        )\r\n        user.is_verified = False  # Set verification flag to False initially\r\n        user.save()\r\n        # Send verification code using Twilio Verify (refer to Twilio documentation)\r\n        return user\r\n\r\nclass ConfirmationCodeSerializer(serializers.Serializer):\r\n    phone_number = serializers.CharField(max_length=20)\r\n    code = serializers.CharField(max_length=6)\r\n\r\n\r\n\r\nclass TwilioVerificationService:\r\n    def __init__(self):\r\n        self.client = Client(os.getenv(\"ACCOUNT_SID\"), os.getenv(\"AUTH_TOKEN\"))\r\n\r\nclass UserVerificationSerializer(serializers.ModelSerializer):\r\n    class Meta:\r\n        model = UserVerification\r\n        fields = ['email']\r\nclass PasswordResetRequestSerializer(serializers.Serializer):\r\n    email = serializers.EmailField()\r\n\r\nclass LoginUserVerificationSerializer(serializers.ModelSerializer):\r\n    class Meta:\r\n        model = UserVerification\r\n        fields = (\"phone_verification_code\", \"email_verification_code\")\r\n\r\n\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/user/serializers.py b/user/serializers.py
+--- a/user/serializers.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ b/user/serializers.py	(date 1714091070215)
+@@ -34,16 +34,18 @@
+     def __init__(self):
+         self.client = Client(os.getenv("ACCOUNT_SID"), os.getenv("AUTH_TOKEN"))
+ 
+-class UserVerificationSerializer(serializers.ModelSerializer):
+-    class Meta:
+-        model = UserVerification
+-        fields = ['email']
++
+ class PasswordResetRequestSerializer(serializers.Serializer):
+     email = serializers.EmailField()
+ 
++
+ class LoginUserVerificationSerializer(serializers.ModelSerializer):
+     class Meta:
+-        model = UserVerification
++        model = LoginUserVerification
++        fields = ["phone_number", "email"]
++class VerifyUserVerificationSerializer(serializers.ModelSerializer):
++    class Meta:
++        model = LoginUserVerification
+         fields = ("phone_verification_code", "email_verification_code")
+ 
+ 
+Index: backend/migrations/0008_delete_jarimabook_autotest_fullanswer_and_more.py
+===================================================================
+diff --git a/backend/migrations/0008_delete_jarimabook_autotest_fullanswer_and_more.py b/backend/migrations/0008_delete_jarimabook_autotest_fullanswer_and_more.py
+deleted file mode 100644
+--- a/backend/migrations/0008_delete_jarimabook_autotest_fullanswer_and_more.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,57 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-25 06:54
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('backend', '0007_autotest_restorelicense_remove_jarimabook_category_and_more'),
+-    ]
+-
+-    operations = [
+-        migrations.DeleteModel(
+-            name='JarimaBook',
+-        ),
+-        migrations.AddField(
+-            model_name='autotest',
+-            name='fullAnswer',
+-            field=models.IntegerField(default=0),
+-        ),
+-        migrations.AddField(
+-            model_name='autotest',
+-            name='testID',
+-            field=models.IntegerField(default=0),
+-        ),
+-        migrations.AlterField(
+-            model_name='affidavit',
+-            name='guvoxnoma2Num',
+-            field=models.IntegerField(verbose_name=150),
+-        ),
+-        migrations.AlterField(
+-            model_name='affidavit',
+-            name='guvoxnomaNum',
+-            field=models.IntegerField(verbose_name=20),
+-        ),
+-        migrations.AlterField(
+-            model_name='affidavit',
+-            name='pasNum',
+-            field=models.IntegerField(blank=True, verbose_name=6),
+-        ),
+-        migrations.AlterField(
+-            model_name='restorelicense',
+-            name='licenseNumber',
+-            field=models.IntegerField(),
+-        ),
+-        migrations.AlterField(
+-            model_name='texservicemessage',
+-            name='phoneNumber',
+-            field=models.IntegerField(),
+-        ),
+-        migrations.DeleteModel(
+-            name='YHQQoidalarBook',
+-        ),
+-        migrations.DeleteModel(
+-            name='YHQQoidlarCategory',
+-        ),
+-    ]
+Index: addCar/migrations/0002_rename_addcar_car.py
+===================================================================
+diff --git a/addCar/migrations/0002_rename_addcar_car.py b/addCar/migrations/0002_rename_addcar_car.py
+deleted file mode 100644
+--- a/addCar/migrations/0002_rename_addcar_car.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,17 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-17 13:19
+-
+-from django.db import migrations
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('addCar', '0001_initial'),
+-    ]
+-
+-    operations = [
+-        migrations.RenameModel(
+-            old_name='addCar',
+-            new_name='Car',
+-        ),
+-    ]
+Index: backend/migrations/0006_affidavit_caroil_texservicemessage.py
+===================================================================
+diff --git a/backend/migrations/0006_affidavit_caroil_texservicemessage.py b/backend/migrations/0006_affidavit_caroil_texservicemessage.py
+deleted file mode 100644
+--- a/backend/migrations/0006_affidavit_caroil_texservicemessage.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,48 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-21 14:41
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('backend', '0005_gas'),
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='Affidavit',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('fName', models.CharField(max_length=150)),
+-                ('guvoxnomaNum', models.IntegerField(max_length=150)),
+-                ('startDate', models.DateField()),
+-                ('endDate', models.DateField()),
+-                ('lifeTime', models.CharField(max_length=150)),
+-                ('givenName', models.CharField(max_length=150)),
+-                ('pasSeria', models.CharField(blank=True, max_length=2)),
+-                ('pasNum', models.IntegerField(blank=True, max_length=6)),
+-                ('guvoxnoma2Num', models.IntegerField(max_length=150)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='CarOil',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('startDate', models.DateField()),
+-                ('traveled', models.IntegerField(verbose_name=150)),
+-                ('brand', models.CharField(max_length=150)),
+-                ('recommendedKm', models.IntegerField(verbose_name=150)),
+-                ('dailyKm', models.IntegerField(verbose_name=150)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='TexServiceMessage',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('email', models.EmailField(max_length=150)),
+-                ('phoneNumber', models.IntegerField(max_length=50)),
+-                ('event', models.CharField(max_length=250)),
+-            ],
+-        ),
+-    ]
+Index: addCar/migrations/0001_initial.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/addCar/migrations/0001_initial.py b/addCar/migrations/0001_initial.py
+deleted file mode 100644
+--- a/addCar/migrations/0001_initial.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,40 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-21 20:34
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    initial = True
+-
+-    dependencies = [
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='Car',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('userName', models.CharField(max_length=150)),
+-                ('email', models.EmailField(max_length=254)),
+-                ('carNamber', models.CharField(max_length=10)),
+-                ('texSeries', models.CharField(max_length=10)),
+-                ('texNum', models.CharField(max_length=10)),
+-                ('avtoMark', models.CharField(max_length=20)),
+-                ('avtoName', models.CharField(max_length=20)),
+-                ('avtoYear', models.IntegerField()),
+-                ('avtoEngine', models.CharField(max_length=50)),
+-                ('avtoColor', models.CharField(max_length=50)),
+-                ('docNumber', models.IntegerField()),
+-                ('docDate', models.DateField()),
+-                ('politicalNum', models.CharField(max_length=150)),
+-                ('dateStart', models.DateField()),
+-                ('dateEnd', models.DateField()),
+-                ('avtoBuyDate', models.DateField()),
+-                ('avtoPrice', models.CharField(max_length=150)),
+-                ('avtoCusov', models.CharField(max_length=150)),
+-                ('transmission', models.CharField(max_length=150)),
+-                ('vinCode', models.CharField(blank=True, max_length=8, null=True, unique=True)),
+-            ],
+-        ),
+-    ]
+Index: payments/migrations/0002_insurance.py
+===================================================================
+diff --git a/payments/migrations/0002_insurance.py b/payments/migrations/0002_insurance.py
+deleted file mode 100644
+--- a/payments/migrations/0002_insurance.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,24 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-20 17:47
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('payments', '0001_initial'),
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='insurance',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('fullName', models.CharField(max_length=150)),
+-                ('email', models.EmailField(max_length=254)),
+-                ('phone', models.CharField(max_length=50)),
+-                ('insuranceTerm', models.DateField()),
+-                ('startDate', models.DateField()),
+-            ],
+-        ),
+-    ]
+Index: user/migrations/0001_initial.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/user/migrations/0001_initial.py b/user/migrations/0001_initial.py
+deleted file mode 100644
+--- a/user/migrations/0001_initial.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,45 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-21 20:34
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    initial = True
+-
+-    dependencies = [
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='User',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('last_login', models.DateTimeField(blank=True, null=True, verbose_name='last login')),
+-                ('phone_number', models.CharField(max_length=15, unique=True)),
+-                ('first_name', models.CharField(max_length=30)),
+-                ('last_name', models.CharField(max_length=30)),
+-                ('email', models.EmailField(blank=True, max_length=254, null=True)),
+-                ('password', models.CharField(max_length=128)),
+-                ('is_active', models.BooleanField(default=True)),
+-                ('is_staff', models.BooleanField(default=False)),
+-                ('is_superuser', models.BooleanField(default=False)),
+-                ('is_verified', models.BooleanField(default=False)),
+-            ],
+-            options={
+-                'verbose_name': 'user',
+-                'verbose_name_plural': 'users',
+-            },
+-        ),
+-        migrations.CreateModel(
+-            name='UserVerification',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('email', models.EmailField(max_length=254, unique=True)),
+-                ('verification_code', models.CharField(max_length=6)),
+-                ('verified', models.BooleanField(default=False)),
+-                ('phone_verification_code', models.CharField(max_length=6)),
+-                ('phone_verified', models.BooleanField(default=False)),
+-            ],
+-        ),
+-    ]
+Index: payments/migrations/0001_initial.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/payments/migrations/0001_initial.py b/payments/migrations/0001_initial.py
+deleted file mode 100644
+--- a/payments/migrations/0001_initial.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,34 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-21 20:34
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    initial = True
+-
+-    dependencies = [
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='Evakuator',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('carModel', models.CharField(max_length=50)),
+-                ('eventName', models.CharField(max_length=150)),
+-                ('location', models.CharField(max_length=150)),
+-                ('eventDate', models.DateField()),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='Mechanic',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('eventName', models.CharField(max_length=250)),
+-                ('carModel', models.CharField(max_length=50)),
+-                ('location', models.CharField(max_length=150)),
+-                ('eventDate', models.DateField()),
+-            ],
+-        ),
+-    ]
+Index: Book/migrations/0001_initial.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/Book/migrations/0001_initial.py b/Book/migrations/0001_initial.py
+deleted file mode 100644
+--- a/Book/migrations/0001_initial.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,49 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-25 06:54
+-
+-import django.db.models.deletion
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    initial = True
+-
+-    dependencies = [
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='JarimaBook',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('url_uz', models.FileField(upload_to='Books')),
+-                ('url_ru', models.FileField(upload_to='Books')),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='YHQQoidlarCategoryRu',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('categoryRu', models.CharField(max_length=150)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='YHQQoidlarCategoryUz',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('categoryUz', models.CharField(max_length=150)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='YHQQoidalarBook',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('titleUz', models.CharField(max_length=150)),
+-                ('titleRu', models.CharField(max_length=150)),
+-                ('url_ru', models.FileField(upload_to='Books/qoidalar')),
+-                ('url_uz', models.FileField(upload_to='Books/qoidalar')),
+-                ('categoryRu', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Book.yhqqoidlarcategoryru')),
+-                ('categoryUz', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Book.yhqqoidlarcategoryuz')),
+-            ],
+-        ),
+-    ]
+Index: backend/migrations/0002_jarimabookcategory_remove_jarima_band_and_more.py
+===================================================================
+diff --git a/backend/migrations/0002_jarimabookcategory_remove_jarima_band_and_more.py b/backend/migrations/0002_jarimabookcategory_remove_jarima_band_and_more.py
+deleted file mode 100644
+--- a/backend/migrations/0002_jarimabookcategory_remove_jarima_band_and_more.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,64 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-19 12:29
+-
+-import django.db.models.deletion
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('backend', '0001_initial'),
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='JarimaBookCategory',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('category', models.CharField(max_length=250, unique=True)),
+-            ],
+-        ),
+-        migrations.RemoveField(
+-            model_name='jarima',
+-            name='band',
+-        ),
+-        migrations.RemoveField(
+-            model_name='jarima',
+-            name='category',
+-        ),
+-        migrations.CreateModel(
+-            name='JarimaBook',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('name', models.TextField(max_length=250)),
+-                ('url', models.FileField(upload_to='templates/Books')),
+-                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend.jarimabookcategory')),
+-            ],
+-        ),
+-        migrations.RenameModel(
+-            old_name='addresses',
+-            new_name='ServiceAddres',
+-        ),
+-        migrations.CreateModel(
+-            name='TexServiceOrder',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('name', models.CharField(max_length=150)),
+-                ('phone', models.CharField(max_length=50)),
+-                ('avtoNum', models.CharField(max_length=50)),
+-                ('Date', models.DateField()),
+-                ('region', models.CharField(max_length=50)),
+-                ('myService', models.CharField(max_length=150)),
+-                ('locations', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend.serviceaddres')),
+-            ],
+-        ),
+-        migrations.DeleteModel(
+-            name='JarimaBandi',
+-        ),
+-        migrations.DeleteModel(
+-            name='Jarima',
+-        ),
+-        migrations.DeleteModel(
+-            name='JarimaToifasi',
+-        ),
+-    ]
+Index: backend/migrations/0005_gas.py
+===================================================================
+diff --git a/backend/migrations/0005_gas.py b/backend/migrations/0005_gas.py
+deleted file mode 100644
+--- a/backend/migrations/0005_gas.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,23 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-20 17:47
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('backend', '0004_remove_yhqqoidalarbook_url_jarimabook_url'),
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='Gas',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('name', models.CharField(max_length=150)),
+-                ('startDate', models.DateField()),
+-                ('endDate', models.DateField()),
+-                ('testDate', models.DateField()),
+-            ],
+-        ),
+-    ]
+Index: backend/migrations/0004_remove_yhqqoidalarbook_url_jarimabook_url.py
+===================================================================
+diff --git a/backend/migrations/0004_remove_yhqqoidalarbook_url_jarimabook_url.py b/backend/migrations/0004_remove_yhqqoidalarbook_url_jarimabook_url.py
+deleted file mode 100644
+--- a/backend/migrations/0004_remove_yhqqoidalarbook_url_jarimabook_url.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,24 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-19 15:10
+-
+-import django.utils.timezone
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('backend', '0003_yhqqoidlarcategory_and_more'),
+-    ]
+-
+-    operations = [
+-        migrations.RemoveField(
+-            model_name='yhqqoidalarbook',
+-            name='url',
+-        ),
+-        migrations.AddField(
+-            model_name='jarimabook',
+-            name='url',
+-            field=models.FileField(default=django.utils.timezone.now, upload_to='Books'),
+-            preserve_default=False,
+-        ),
+-    ]
+Index: backend/migrations/0001_initial.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/backend/migrations/0001_initial.py b/backend/migrations/0001_initial.py
+deleted file mode 100644
+--- a/backend/migrations/0001_initial.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,84 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-21 20:34
+-
+-import django.db.models.deletion
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    initial = True
+-
+-    dependencies = [
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='addresses',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('title', models.CharField(max_length=150)),
+-                ('address', models.CharField(max_length=250)),
+-                ('location', models.CharField(max_length=250)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='JarimaBandi',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('title', models.CharField(max_length=150)),
+-                ('description', models.TextField(blank=True)),
+-                ('price_main', models.CharField(max_length=50)),
+-                ('price_sale30', models.CharField(max_length=50)),
+-                ('price_sale50', models.CharField(max_length=50)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='JarimaToifasi',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('name1', models.CharField(max_length=250, unique=True)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='TexService',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('email', models.EmailField(max_length=254)),
+-                ('phone', models.CharField(max_length=50)),
+-                ('text', models.TextField()),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='YHQQoidalar',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('title', models.CharField(max_length=300)),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='Jarima',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('name2', models.TextField()),
+-                ('band', models.ManyToManyField(to='backend.jarimabandi')),
+-                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend.jarimatoifasi')),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='YHQQoidalarCategory',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('name', models.CharField(max_length=300)),
+-                ('YHQQoidalar', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend.yhqqoidalar')),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='YHQQoida',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('text', models.TextField()),
+-                ('img', models.ImageField(blank=True, null=True, upload_to='belgilar/photos')),
+-                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend.yhqqoidalarcategory')),
+-            ],
+-        ),
+-    ]
+Index: backend/migrations/0003_yhqqoidlarcategory_and_more.py
+===================================================================
+diff --git a/backend/migrations/0003_yhqqoidlarcategory_and_more.py b/backend/migrations/0003_yhqqoidlarcategory_and_more.py
+deleted file mode 100644
+--- a/backend/migrations/0003_yhqqoidlarcategory_and_more.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,57 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-19 15:07
+-
+-import django.db.models.deletion
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('backend', '0002_jarimabookcategory_remove_jarima_band_and_more'),
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='YHQQoidlarCategory',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('categoryName', models.CharField(max_length=150)),
+-            ],
+-        ),
+-        migrations.RemoveField(
+-            model_name='yhqqoidalarcategory',
+-            name='YHQQoidalar',
+-        ),
+-        migrations.RemoveField(
+-            model_name='jarimabook',
+-            name='url',
+-        ),
+-        migrations.AlterField(
+-            model_name='jarimabook',
+-            name='name',
+-            field=models.CharField(max_length=150),
+-        ),
+-        migrations.AlterField(
+-            model_name='jarimabookcategory',
+-            name='category',
+-            field=models.CharField(max_length=150, unique=True),
+-        ),
+-        migrations.CreateModel(
+-            name='YHQQoidalarBook',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('title', models.CharField(max_length=300)),
+-                ('url', models.FileField(upload_to='Books')),
+-                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backend.yhqqoidlarcategory')),
+-            ],
+-        ),
+-        migrations.DeleteModel(
+-            name='YHQQoida',
+-        ),
+-        migrations.DeleteModel(
+-            name='YHQQoidalar',
+-        ),
+-        migrations.DeleteModel(
+-            name='YHQQoidalarCategory',
+-        ),
+-    ]
+Index: backend/migrations/0007_autotest_restorelicense_remove_jarimabook_category_and_more.py
+===================================================================
+diff --git a/backend/migrations/0007_autotest_restorelicense_remove_jarimabook_category_and_more.py b/backend/migrations/0007_autotest_restorelicense_remove_jarimabook_category_and_more.py
+deleted file mode 100644
+--- a/backend/migrations/0007_autotest_restorelicense_remove_jarimabook_category_and_more.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ /dev/null	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
+@@ -1,44 +0,0 @@
+-# Generated by Django 5.0.4 on 2024-04-22 09:10
+-
+-from django.db import migrations, models
+-
+-
+-class Migration(migrations.Migration):
+-
+-    dependencies = [
+-        ('backend', '0006_affidavit_caroil_texservicemessage'),
+-    ]
+-
+-    operations = [
+-        migrations.CreateModel(
+-            name='AutoTest',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('trueAnswer', models.IntegerField(default=0)),
+-                ('falseAnswer', models.IntegerField(default=0)),
+-                ('date', models.DateField()),
+-            ],
+-        ),
+-        migrations.CreateModel(
+-            name='RestoreLicense',
+-            fields=[
+-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+-                ('fName', models.CharField(max_length=150)),
+-                ('licenseNumber', models.IntegerField(max_length=150)),
+-                ('startDate', models.DateField()),
+-                ('endDate', models.DateField()),
+-                ('phoneNum', models.CharField(max_length=150)),
+-            ],
+-        ),
+-        migrations.RemoveField(
+-            model_name='jarimabook',
+-            name='category',
+-        ),
+-        migrations.RemoveField(
+-            model_name='jarimabook',
+-            name='name',
+-        ),
+-        migrations.DeleteModel(
+-            name='JarimaBookCategory',
+-        ),
+-    ]
+Index: config/settings.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from pathlib import Path\r\nimport os\r\nfrom dotenv import load_dotenv\r\nfrom datetime import timedelta\r\nfrom dotenv import load_dotenv\r\n\r\nload_dotenv()\r\n# Build paths inside the project like this: BASE_DIR / 'subdir'.\r\nBASE_DIR = Path(__file__).resolve().parent.parent\r\n\r\n\r\n# Quick-start development settings - unsuitable for production\r\n# See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/\r\n\r\n# SECURITY WARNING: keep the secret key used in production secret!\r\nSECRET_KEY = 'django-insecure-0rb7+sr&u7fzccq+ea(=dzk!c1h22pdqvc3kl1#4de0n95hv70'\r\n\r\n# SECURITY WARNING: don't run with debug turned on in production!\r\nDEBUG = True\r\n\r\nload_dotenv()\r\n\r\nALLOWED_HOSTS = ['*']\r\n\r\n\r\n# Application definition\r\n\r\nINSTALLED_APPS = [\r\n    'django.contrib.admin',\r\n    'django.contrib.auth',\r\n    'django.contrib.contenttypes',\r\n    'django.contrib.sessions',\r\n    'django.contrib.messages',\r\n    'django.contrib.staticfiles',\r\n    #Local Apps\r\n    'backend',\r\n    'user',\r\n    'payments',\r\n    'addCar',\r\n    'Book',\r\n    #Install Apps\r\n    'rest_framework',\r\n    'corsheaders'\r\n]\r\n\r\nMIDDLEWARE = [\r\n    'django.middleware.security.SecurityMiddleware',\r\n    'django.contrib.sessions.middleware.SessionMiddleware',\r\n    'corsheaders.middleware.CorsMiddleware',\r\n    'django.middleware.common.CommonMiddleware',\r\n    'django.middleware.csrf.CsrfViewMiddleware',\r\n    'django.contrib.auth.middleware.AuthenticationMiddleware',\r\n    'django.contrib.messages.middleware.MessageMiddleware',\r\n    'django.middleware.clickjacking.XFrameOptionsMiddleware',\r\n]\r\n\r\n# REST_FRAMEWORK ={\r\n#     'DEFAULT_PERMISSION_CLASSES': [\r\n#         \"rest_framework.permissions.IsAuthenticated\", ],\r\n#     \"DEFAULT_AUTHENTICATION_CLASSES\": [\r\n#         'rest_framework.authentication.TokenAuthentication',\r\n#         'rest_framework_simplejwt.authentication.JWTAuthentication',\r\n#     ]\r\n# }\r\n\r\n\r\n\r\nCORS_ORIGIN_ALLOW_ALL = True\r\nCORS_ALLOW_CREDENTIALS = True\r\n\r\n\r\nSIMPLE_JWT = {\r\n    \"ACCESS_TOKEN_LIFETIME\": timedelta(days=2),\r\n    \"REFRESH_TOKEN_LIFETIME\": timedelta(days=15),\r\n    \"ROTATE_REFRESH_TOKENS\": False,\r\n    \"BLACKLIST_AFTER_ROTATION\": False,\r\n    \"UPDATE_LAST_LOGIN\": False,\r\n\r\n    \"ALGORITHM\": \"HS256\",\r\n    \"SIGNING_KEY\": SECRET_KEY,\r\n    \"VERIFYING_KEY\": \"\",\r\n    \"AUDIENCE\": None,\r\n    \"ISSUER\": None,\r\n    \"JSON_ENCODER\": None,\r\n    \"JWK_URL\": None,\r\n    \"LEEWAY\": 0,\r\n\r\n    \"AUTH_HEADER_TYPES\": (\"Bearer\",),\r\n    \"AUTH_HEADER_NAME\": \"HTTP_AUTHORIZATION\",\r\n    \"USER_ID_FIELD\": \"id\",\r\n    \"USER_ID_CLAIM\": \"user_id\",\r\n    \"USER_AUTHENTICATION_RULE\": \"rest_framework_simplejwt.authentication.default_user_authentication_rule\",\r\n\r\n    \"AUTH_TOKEN_CLASSES\": (\"rest_framework_simplejwt.tokens.AccessToken\",),\r\n    \"TOKEN_TYPE_CLAIM\": \"token_type\",\r\n    \"TOKEN_USER_CLASS\": \"rest_framework_simplejwt.models.TokenUser\",\r\n\r\n    \"JTI_CLAIM\": \"jti\",\r\n\r\n    \"SLIDING_TOKEN_REFRESH_EXP_CLAIM\": \"refresh_exp\",\r\n    \"SLIDING_TOKEN_LIFETIME\": timedelta(minutes=5),\r\n    \"SLIDING_TOKEN_REFRESH_LIFETIME\": timedelta(days=1),\r\n\r\n    \"TOKEN_OBTAIN_SERIALIZER\": \"rest_framework_simplejwt.serializers.TokenObtainPairSerializer\",\r\n    \"TOKEN_REFRESH_SERIALIZER\": \"rest_framework_simplejwt.serializers.TokenRefreshSerializer\",\r\n    \"TOKEN_VERIFY_SERIALIZER\": \"rest_framework_simplejwt.serializers.TokenVerifySerializer\",\r\n    \"TOKEN_BLACKLIST_SERIALIZER\": \"rest_framework_simplejwt.serializers.TokenBlacklistSerializer\",\r\n    \"SLIDING_TOKEN_OBTAIN_SERIALIZER\": \"rest_framework_simplejwt.serializers.TokenObtainSlidingSerializer\",\r\n    \"SLIDING_TOKEN_REFRESH_SERIALIZER\": \"rest_framework_simplejwt.serializers.TokenRefreshSlidingSerializer\",\r\n}\r\n\r\nROOT_URLCONF = 'config.urls'\r\n\r\nTEMPLATES = [\r\n    {\r\n        'BACKEND': 'django.template.backends.django.DjangoTemplates',\r\n        'DIRS': [],\r\n        'APP_DIRS': True,\r\n        'OPTIONS': {\r\n            'context_processors': [\r\n                'django.template.context_processors.debug',\r\n                'django.template.context_processors.request',\r\n                'django.contrib.auth.context_processors.auth',\r\n                'django.contrib.messages.context_processors.messages',\r\n            ],\r\n        },\r\n    },\r\n]\r\n\r\nWSGI_APPLICATION = 'config.wsgi.application'\r\n\r\n\r\n# Database\r\n# https://docs.djangoproject.com/en/5.0/ref/settings/#databases\r\n\r\n# DATABASES = {\r\n#     'default': {\r\n#         'ENGINE': 'django.db.backends.sqlite3',\r\n#         'NAME': 'sqlite3.db',\r\n#     }\r\n# }\r\n\r\nDB_ENGINE = os.getenv('DB_ENGINE')\r\nDB_NAME = os.getenv('DB_NAME')\r\nDB_USER = os.getenv('DB_USER')\r\nDB_PASSWORD = os.getenv('DB_PASSWORD')\r\nDB_HOST = os.getenv('DB_HOST')\r\nDB_PORT = os.getenv('DB_PORT')\r\n\r\n# DATABASES sozlamalari\r\nDATABASES = {\r\n    'default': {\r\n        'ENGINE': DB_ENGINE,\r\n        'NAME': DB_NAME,\r\n        'USER': DB_USER,\r\n        'PASSWORD': DB_PASSWORD,\r\n        'HOST': DB_HOST,\r\n        'PORT': DB_PORT,\r\n    }\r\n}\r\n\r\n\r\n# Password validation\r\n# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators\r\n\r\nAUTH_PASSWORD_VALIDATORS = [\r\n    {\r\n        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',\r\n    },\r\n    {\r\n        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',\r\n    },\r\n    {\r\n        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',\r\n    },\r\n    {\r\n        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',\r\n    },\r\n]\r\n\r\n\r\n# Internationalization\r\n# https://docs.djangoproject.com/en/5.0/topics/i18n/\r\n\r\nLANGUAGE_CODE = 'en-us'\r\n\r\nTIME_ZONE = 'UTC'\r\n\r\nUSE_I18N = True\r\n\r\nUSE_TZ = True\r\n\r\n\r\n# Static files (CSS, JavaScript, Images)\r\n# https://docs.djangoproject.com/en/5.0/howto/static-files/\r\n\r\nSTATIC_URL = '/static/'\r\nMEDIA_URL = '/media/'\r\nMEDIA_ROOT = os.path.join(BASE_DIR, 'media')\r\n# Default primary key field type\r\n# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field\r\n\r\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\r\nAUTH_USER_MODEL = 'user.User'\r\n\r\n\r\nEMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/config/settings.py b/config/settings.py
+--- a/config/settings.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ b/config/settings.py	(date 1714079969557)
+@@ -40,6 +40,7 @@
+     'Book',
+     #Install Apps
+     'rest_framework',
++    'rest_framework_simplejwt',
+     'corsheaders'
+ ]
+ 
+@@ -132,32 +133,32 @@
+ 
+ # Database
+ # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
+-
+-# DATABASES = {
+-#     'default': {
+-#         'ENGINE': 'django.db.backends.sqlite3',
+-#         'NAME': 'sqlite3.db',
+-#     }
+-# }
+-
+-DB_ENGINE = os.getenv('DB_ENGINE')
+-DB_NAME = os.getenv('DB_NAME')
+-DB_USER = os.getenv('DB_USER')
+-DB_PASSWORD = os.getenv('DB_PASSWORD')
+-DB_HOST = os.getenv('DB_HOST')
+-DB_PORT = os.getenv('DB_PORT')
+-
+-# DATABASES sozlamalari
++#
+ DATABASES = {
+     'default': {
+-        'ENGINE': DB_ENGINE,
+-        'NAME': DB_NAME,
+-        'USER': DB_USER,
+-        'PASSWORD': DB_PASSWORD,
+-        'HOST': DB_HOST,
+-        'PORT': DB_PORT,
++        'ENGINE': 'django.db.backends.sqlite3',
++        'NAME': 'database.sqlite3',
+     }
+ }
++
++# DB_ENGINE = os.getenv('DB_ENGINE')
++# DB_NAME = os.getenv('DB_NAME')
++# DB_USER = os.getenv('DB_USER')
++# DB_PASSWORD = os.getenv('DB_PASSWORD')
++# DB_HOST = os.getenv('DB_HOST')
++# DB_PORT = os.getenv('DB_PORT')
++#
++# # DATABASES sozlamalari
++# DATABASES = {
++#     'default': {
++#         'ENGINE': DB_ENGINE,
++#         'NAME': DB_NAME,
++#         'USER': DB_USER,
++#         'PASSWORD': DB_PASSWORD,
++#         'HOST': DB_HOST,
++#         'PORT': DB_PORT,
++#     }
++# }
+ 
+ 
+ # Password validation
+@@ -204,4 +205,9 @@
+ AUTH_USER_MODEL = 'user.User'
+ 
+ 
+-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+\ No newline at end of file
++EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
++EMAIL_HOST = os.getenv("EMAIL_HOST")
++EMAIL_PORT = os.getenv("EMAIL_PORT")
++EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
++EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
++EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS")
+\ No newline at end of file
+Index: user/urls.py
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>from django.urls import path\r\nfrom .views import RegisterUserView, VerifyUserView, SendVerificationCodeView, VerifyVerificationCodeView, PasswordResetRequestView\r\n\r\nurlpatterns = [\r\n    path('register/', RegisterUserView.as_view(), name='register'),\r\n    path('confirm-code/', VerifyUserView.as_view(), name='confirm-code'),\r\n    path('send-verification-email/', SendVerificationCodeView.as_view(), name='send-verification-email'),\r\n    path('verify-email/', VerifyVerificationCodeView.as_view(), name='verify-email'),\r\n    path('password_reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),\r\n]\r\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/user/urls.py b/user/urls.py
+--- a/user/urls.py	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ b/user/urls.py	(date 1714080150182)
+@@ -1,5 +1,5 @@
+ from django.urls import path
+-from .views import RegisterUserView, VerifyUserView, SendVerificationCodeView, VerifyVerificationCodeView, PasswordResetRequestView
++from .views import RegisterUserView, VerifyUserView, SendVerificationCodeView, VerifyVerificationCodeView, PasswordResetRequestView, LoginView
+ 
+ urlpatterns = [
+     path('register/', RegisterUserView.as_view(), name='register'),
+@@ -7,4 +7,5 @@
+     path('send-verification-email/', SendVerificationCodeView.as_view(), name='send-verification-email'),
+     path('verify-email/', VerifyVerificationCodeView.as_view(), name='verify-email'),
+     path('password_reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
++    path('login/', LoginView.as_view(), name='login'),
+ ]
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<project version=\"4\">\r\n  <component name=\"AutoImportSettings\">\r\n    <option name=\"autoReloadType\" value=\"SELECTIVE\" />\r\n  </component>\r\n  <component name=\"ChangeListManager\">\r\n    <list default=\"true\" id=\"f97241d2-ccd4-4c43-a84f-31f763036b54\" name=\"Changes\" comment=\"Fixed\">\r\n      <change beforePath=\"$PROJECT_DIR$/user/views.py\" beforeDir=\"false\" afterPath=\"$PROJECT_DIR$/user/views.py\" afterDir=\"false\" />\r\n    </list>\r\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\r\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\r\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\r\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\r\n  </component>\r\n  <component name=\"FileTemplateManagerImpl\">\r\n    <option name=\"RECENT_TEMPLATES\">\r\n      <list>\r\n        <option value=\"Python Script\" />\r\n      </list>\r\n    </option>\r\n  </component>\r\n  <component name=\"Git.Settings\">\r\n    <option name=\"PUSH_AUTO_UPDATE\" value=\"true\" />\r\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$\" />\r\n  </component>\r\n  <component name=\"GitHubPullRequestSearchHistory\">{\r\n  &quot;lastFilter&quot;: {\r\n    &quot;state&quot;: &quot;OPEN&quot;,\r\n    &quot;assignee&quot;: &quot;adm1ngit&quot;\r\n  }\r\n}</component>\r\n  <component name=\"GithubPullRequestsUISettings\">{\r\n  &quot;selectedUrlAndAccountId&quot;: {\r\n    &quot;url&quot;: &quot;https://github.com/adm1ngit/MyWay_Backend.git&quot;,\r\n    &quot;accountId&quot;: &quot;26e1552f-cc52-483f-bb2b-d205abd570df&quot;\r\n  }\r\n}</component>\r\n  <component name=\"ProjectColorInfo\">{\r\n  &quot;associatedIndex&quot;: 6\r\n}</component>\r\n  <component name=\"ProjectId\" id=\"2f6weUXMrVvL882rqwe1dz7SrE2\" />\r\n  <component name=\"ProjectLevelVcsManager\">\r\n    <ConfirmationsSetting value=\"2\" id=\"Add\" />\r\n  </component>\r\n  <component name=\"ProjectViewState\">\r\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\r\n    <option name=\"showLibraryContents\" value=\"true\" />\r\n  </component>\r\n  <component name=\"PropertiesComponent\">{\r\n  &quot;keyToString&quot;: {\r\n    &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,\r\n    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,\r\n    &quot;RunOnceActivity.pycharm.django.structure.promotion.once.per.project&quot;: &quot;true&quot;,\r\n    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,\r\n    &quot;git-widget-placeholder&quot;: &quot;main&quot;,\r\n    &quot;last_opened_file_path&quot;: &quot;C:/Users/adminPC/Documents/GitHub/MyWay_Backend&quot;,\r\n    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,\r\n    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,\r\n    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,\r\n    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,\r\n    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,\r\n    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;\r\n  }\r\n}</component>\r\n  <component name=\"RecentsManager\">\r\n    <key name=\"CopyFile.RECENT_KEYS\">\r\n      <recent name=\"C:\\Users\\adminPC\\Documents\\GitHub\\MyWay_Backend\" />\r\n      <recent name=\"C:\\Users\\adminPC\\Documents\\GitHub\\MyWay_Backend\\templates\" />\r\n    </key>\r\n  </component>\r\n  <component name=\"SharedIndexes\">\r\n    <attachedChunks>\r\n      <set>\r\n        <option value=\"bundled-js-predefined-1d06a55b98c1-74d2a5396914-JavaScript-PY-241.14494.241\" />\r\n        <option value=\"bundled-python-sdk-0509580d9d50-28c9f5db9ffe-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-241.14494.241\" />\r\n      </set>\r\n    </attachedChunks>\r\n  </component>\r\n  <component name=\"SpellCheckerSettings\" RuntimeDictionaries=\"0\" Folders=\"0\" CustomDictionaries=\"0\" DefaultDictionary=\"application-level\" UseSingleDictionary=\"true\" transferred=\"true\" />\r\n  <component name=\"TaskManager\">\r\n    <task active=\"true\" id=\"Default\" summary=\"Default task\">\r\n      <changelist id=\"f97241d2-ccd4-4c43-a84f-31f763036b54\" name=\"Changes\" comment=\"\" />\r\n      <created>1713134931798</created>\r\n      <option name=\"number\" value=\"Default\" />\r\n      <option name=\"presentableId\" value=\"Default\" />\r\n      <updated>1713134931798</updated>\r\n      <workItem from=\"1713134934387\" duration=\"247000\" />\r\n      <workItem from=\"1713135195226\" duration=\"7311000\" />\r\n      <workItem from=\"1713145514407\" duration=\"1836000\" />\r\n      <workItem from=\"1713205603353\" duration=\"8434000\" />\r\n      <workItem from=\"1713234271384\" duration=\"55000\" />\r\n      <workItem from=\"1713234328135\" duration=\"49000\" />\r\n      <workItem from=\"1713235382536\" duration=\"2890000\" />\r\n      <workItem from=\"1713242336572\" duration=\"124000\" />\r\n      <workItem from=\"1713252489964\" duration=\"654000\" />\r\n      <workItem from=\"1713301529444\" duration=\"509000\" />\r\n      <workItem from=\"1713318689162\" duration=\"3384000\" />\r\n      <workItem from=\"1713330856860\" duration=\"1082000\" />\r\n      <workItem from=\"1713343532437\" duration=\"482000\" />\r\n      <workItem from=\"1713375688551\" duration=\"2566000\" />\r\n      <workItem from=\"1713378292518\" duration=\"2454000\" />\r\n      <workItem from=\"1713390783191\" duration=\"8480000\" />\r\n      <workItem from=\"1713483231076\" duration=\"7160000\" />\r\n      <workItem from=\"1713548305613\" duration=\"10552000\" />\r\n      <workItem from=\"1713636920535\" duration=\"12798000\" />\r\n      <workItem from=\"1713678085445\" duration=\"1005000\" />\r\n      <workItem from=\"1713723276237\" duration=\"6030000\" />\r\n      <workItem from=\"1713744270315\" duration=\"364000\" />\r\n      <workItem from=\"1713767521551\" duration=\"1696000\" />\r\n      <workItem from=\"1713808049356\" duration=\"5958000\" />\r\n      <workItem from=\"1713830184099\" duration=\"1549000\" />\r\n      <workItem from=\"1713894376127\" duration=\"5175000\" />\r\n      <workItem from=\"1713928666291\" duration=\"1222000\" />\r\n      <workItem from=\"1713983257609\" duration=\"563000\" />\r\n    </task>\r\n    <task id=\"LOCAL-00001\" summary=\"Fixed\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1713135698138</created>\r\n      <option name=\"number\" value=\"00001\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00001\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1713135698138</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00002\" summary=\"Fixed All\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1713145890694</created>\r\n      <option name=\"number\" value=\"00002\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00002\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1713145890694</updated>\r\n    </task>\r\n    <task id=\"LOCAL-00003\" summary=\"Fixed\">\r\n      <option name=\"closed\" value=\"true\" />\r\n      <created>1713233186829</created>\r\n      <option name=\"number\" value=\"00003\" />\r\n      <option name=\"presentableId\" value=\"LOCAL-00003\" />\r\n      <option name=\"project\" value=\"LOCAL\" />\r\n      <updated>1713233186829</updated>\r\n    </task>\r\n    <option name=\"localTasksCounter\" value=\"4\" />\r\n    <servers />\r\n  </component>\r\n  <component name=\"TypeScriptGeneratedFilesManager\">\r\n    <option name=\"version\" value=\"3\" />\r\n  </component>\r\n  <component name=\"Vcs.Log.Tabs.Properties\">\r\n    <option name=\"TAB_STATES\">\r\n      <map>\r\n        <entry key=\"MAIN\">\r\n          <value>\r\n            <State />\r\n          </value>\r\n        </entry>\r\n      </map>\r\n    </option>\r\n  </component>\r\n  <component name=\"VcsManagerConfiguration\">\r\n    <MESSAGE value=\"Fixed All\" />\r\n    <MESSAGE value=\"Fixed\" />\r\n    <option name=\"LAST_COMMIT_MESSAGE\" value=\"Fixed\" />\r\n  </component>\r\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision 4f9defbafb69386c2f24cbbc9090c82a6add50bb)
++++ b/.idea/workspace.xml	(date 1714332184182)
+@@ -5,6 +5,31 @@
+   </component>
+   <component name="ChangeListManager">
+     <list default="true" id="f97241d2-ccd4-4c43-a84f-31f763036b54" name="Changes" comment="Fixed">
++      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/Book/migrations/0001_initial.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/Book/migrations/__init__.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/addCar/migrations/0001_initial.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/addCar/migrations/0002_rename_addcar_car.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/addCar/migrations/__init__.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0001_initial.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0002_jarimabookcategory_remove_jarima_band_and_more.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0003_yhqqoidlarcategory_and_more.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0004_remove_yhqqoidalarbook_url_jarimabook_url.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0005_gas.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0006_affidavit_caroil_texservicemessage.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0007_autotest_restorelicense_remove_jarimabook_category_and_more.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/0008_delete_jarimabook_autotest_fullanswer_and_more.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/backend/migrations/__init__.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/config/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings.py" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/payments/migrations/0001_initial.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/payments/migrations/0002_insurance.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/payments/migrations/__init__.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/sqlite3.db" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/user/migrations/0001_initial.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/user/migrations/__init__.py" beforeDir="false" />
++      <change beforePath="$PROJECT_DIR$/user/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/user/models.py" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/user/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/user/serializers.py" afterDir="false" />
++      <change beforePath="$PROJECT_DIR$/user/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/user/urls.py" afterDir="false" />
+       <change beforePath="$PROJECT_DIR$/user/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/user/views.py" afterDir="false" />
+     </list>
+     <option name="SHOW_DIALOG" value="false" />
+@@ -12,6 +37,9 @@
+     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+     <option name="LAST_RESOLUTION" value="IGNORE" />
+   </component>
++  <component name="DjangoConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)">
++    <option name="myCustomStartScript" value="import sys; print('Python %s on %s' % (sys.version, sys.platform))&#10;import django; print('Django %s' % django.get_version())&#10;sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;if 'setup' in dir(django): django.setup()&#10;import django_manage_shell; django_manage_shell.run(PROJECT_ROOT)" />
++  </component>
+   <component name="FileTemplateManagerImpl">
+     <option name="RECENT_TEMPLATES">
+       <list>
+@@ -59,6 +87,7 @@
+     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
++    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;,
+     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+   }
+ }</component>
+@@ -112,6 +141,13 @@
+       <workItem from="1713894376127" duration="5175000" />
+       <workItem from="1713928666291" duration="1222000" />
+       <workItem from="1713983257609" duration="563000" />
++      <workItem from="1714100329051" duration="1152000" />
++      <workItem from="1714110553742" duration="1121000" />
++      <workItem from="1714111706917" duration="19000" />
++      <workItem from="1714111742362" duration="80000" />
++      <workItem from="1714152607106" duration="65000" />
++      <workItem from="1714152688384" duration="726000" />
++      <workItem from="1714331798148" duration="383000" />
+     </task>
+     <task id="LOCAL-00001" summary="Fixed">
+       <option name="closed" value="true" />
+diff --git a/addCar/migrations/__init__.py b/addCar/migrations/__init__.py
+deleted file mode 100644
+diff --git a/backend/migrations/__init__.py b/backend/migrations/__init__.py
+deleted file mode 100644
+diff --git a/user/migrations/__init__.py b/user/migrations/__init__.py
+deleted file mode 100644
+diff --git a/Book/migrations/__init__.py b/Book/migrations/__init__.py
+deleted file mode 100644
+diff --git a/payments/migrations/__init__.py b/payments/migrations/__init__.py
+deleted file mode 100644
