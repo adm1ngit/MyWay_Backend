@@ -63,7 +63,7 @@ class Affidavit(models.Model):
 #---------------- Texnik xizmat ko'rsatish START --------------------#
 class TexServiceMessage(models.Model):
     email = models.EmailField(max_length=150)
-    phoneNumber = models.IntegerField()
+    phoneNum = models.CharField(max_length=13)
     event = models.CharField(max_length=250)
     def __str__(self):
         return self.email
@@ -75,7 +75,7 @@ class RestoreLicense(models.Model):
     licenseNumber = models.IntegerField()
     startDate = models.DateField()
     endDate = models.DateField()
-    phoneNum = models.CharField(max_length=150)
+    phoneNum = models.CharField(max_length=13)
     def __str__(self):
         return self.fName
 
@@ -83,10 +83,31 @@ class RestoreLicense(models.Model):
 #---------------- Haydovchilik guvohnomasini tiklash END ----------------#
 
 #---------------- Avtotest  START -----------------------------------#
-class AutoTest(models.Model):
+class AutoTestResult(models.Model):
     trueAnswer = models.IntegerField(default=0)
     falseAnswer = models.IntegerField(default=0)
     fullAnswer = models.IntegerField(default=0)
     testID = models.IntegerField(default=0)
     date = models.DateField()
 #---------------- Avtotest  START -----------------------------------#
+
+#-------- Ma’muriy amaliyot bo’limi START   --------------------------#
+class Department(models.Model):
+    fName = models.CharField(max_length=150)
+    departmentName = models.CharField(max_length=150)
+    departmentHead = models.CharField(max_length=150)
+    email = models.EmailField(max_length=150)
+    phoneNum = models.CharField(max_length=13)
+
+#----------  Ma’muriy amaliyot bo’limi END  -------------------#
+
+#---------- Jarimalar START --------------------------#
+class Penalty(models.Model):
+    pass
+
+#---------- Jarimalar END --------------------------#
+
+#---------- Mening DRBlarim START -------------------------#
+class MyDRB(models.Model):
+    pass
+#---------- Mening DRBlarim END -------------------------#
