@@ -27,5 +27,8 @@ class RestoreLicenseApi(generics.ListCreateAPIView):
     serializer_class = RestoreLicenseSerializer
 
 class AutoTestApi(generics.ListCreateAPIView):
-    queryset = AutoTest.objects.all()
+    queryset = AutoTestResult.objects.all()
     serializer_class = AutoTestSerializer
+class DepartmentApi(generics.ListCreateAPIView):
+    queryset = Department.objects.all()
+    serializer_class = DepartmentSerializer

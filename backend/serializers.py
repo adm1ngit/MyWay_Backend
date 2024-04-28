@@ -43,5 +43,10 @@ class RestoreLicenseSerializer(serializers.ModelSerializer):
 
 class AutoTestSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AutoTest
+        model = AutoTestResult
+        fields = '__all__'
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
         fields = '__all__'

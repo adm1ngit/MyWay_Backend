@@ -3,3 +3,4 @@ from .models import *
 
 admin.site.register([JarimaBook])
 admin.site.register([YHQQoidalarBook, YHQQoidlarCategoryUz, YHQQoidlarCategoryRu]),
+
