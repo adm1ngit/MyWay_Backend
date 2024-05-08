@@ -12,11 +12,11 @@ from twilio.rest import Client
 from django.utils.crypto import get_random_string
 from .models import UserVerification, User
 
-
 logger = logging.getLogger(__name__)
 
 
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< USER REGISTRATION START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 class RegisterUserView(APIView):
     def post(self, request):
@@ -66,8 +66,10 @@ class VerifyUserView(APIView):
         except Exception as e:
             return Response({'message': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< USER REGISTRATION END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< USER PASSWORD RESET START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 class SendVerificationCodeView(APIView):
     def post(self, request):
         serializer = UserVerificationSerializer(data=request.data)
@@ -113,28 +115,10 @@ class VerifyVerificationCodeView(APIView):
         except UserVerification.DoesNotExist:
             return Response({"message": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
 
-class PasswordResetRequestView(APIView):
-    def post(self, request, *args, **kwargs):
-        email = request.data.get('email')
-        if not email:
-            return Response({'message': "Email manzilini kiritishingiz kerak."}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response({'message': "Foydalanuvchi topilmadi"}, status=status.HTTP_404_NOT_FOUND)
-        new_password = get_random_string(10)
-        send_mail(
-            "Parolni tiklash",
-            f"Sizning yangi parolingiz: {new_password}",
-            "4dm1n217@gmail.com.com",
-            [email],
-            fail_silently=False,
-        )
-        user.set_password(new_password)
-        user.save()
-        return Response({'message': "Yangi parol emailga yuborildi"}, status=status.HTTP_200_OK)
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< USER PASSWORD RESET END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< USER LOGIN START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 class LoginView(APIView):
     def post(self, request):
         serializer = LoginUserVerificationSerializer(data=request.data)
@@ -181,3 +165,4 @@ class LoginView(APIView):
 
 
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< USER LOGIN END <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
