@@ -4,6 +4,7 @@ from django.contrib.auth import authenticate, login
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK
 from rest_framework import status
 from .serializers import *
 import random
@@ -12,8 +13,8 @@ from twilio.rest import Client
 from django.utils.crypto import get_random_string
 from .models import UserVerification, User
 
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 
 
 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< USER REGISTRATION START <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -96,22 +97,21 @@ class SendVerificationCodeView(APIView):
 
 
 
-class VerifyVerificationCodeView(APIView):
+class VerifyCodeView(APIView):
     def post(self, request):
-        email = request.data.get("email")
-        verification_code = request.data.get("verification_code")
+        serializer = UserVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        if not email or not verification_code:
-            return Response({"message": "Email va tasdiqlash kodi kiritishingiz shart."}, status=status.HTTP_400_BAD_REQUEST)
+        entered_code = serializer.validated_data["verification_code"]
 
         try:
-            user_verification = UserVerification.objects.get(email=email, verification_code=verification_code)
-            if not user_verification.verified:
-                user_verification.verified = True
-                user_verification.save()
+            user_verification = UserVerification.objects.get(verification_code=entered_code)
+
+            user = authenticate(identifier=user_verification.identifier)
+            if user:
                 return Response({"message": "Verification successful."}, status=status.HTTP_200_OK)
             else:
-                return Response({"message": "Email has already been verified."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"message": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
         except UserVerification.DoesNotExist:
             return Response({"message": "Invalid verification code."}, status=status.HTTP_400_BAD_REQUEST)
 
