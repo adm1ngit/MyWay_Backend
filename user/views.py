@@ -1,16 +1,14 @@
 import logging
 import os
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.status import HTTP_400_BAD_REQUEST, HTTP_200_OK
 from rest_framework import status
 from .serializers import *
 import random
 from django.core.mail import send_mail
 from twilio.rest import Client
-from django.utils.crypto import get_random_string
 from .models import UserVerification, User
 
 
