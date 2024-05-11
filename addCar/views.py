@@ -43,7 +43,6 @@ class CarDetailsByVinCode(APIView):
             'dateStart': car.dateStart,
             'dateEnd': car.dateEnd,
             'avtoBuyDate': car.avtoBuyDate,
-            'avtoPrice': car.avtoPrice,
             'avtoCusov': car.avtoCusov,
             'transmission': car.transmission,
         }

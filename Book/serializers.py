@@ -11,6 +11,8 @@ class JarimaBooksSerializer(serializers.ModelSerializer):
 
 # -------- YHQ Qoidalar START -----------------#
 class YHQQoidalarBookSerializer(serializers.ModelSerializer):
+    categoryRu = serializers.CharField(source='categoryRu.categoryRu')
+    categoryUz = serializers.CharField(source='categoryUz.categoryUz')
     class Meta:
         model = YHQQoidalarBook
         fields = '__all__'
