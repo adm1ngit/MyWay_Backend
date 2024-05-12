@@ -22,7 +22,6 @@ def send_verification_code(self, phone_number):
 
 
 def generate_verification_code():
-    # Generate a random 6-digit code
     code = ''.join(str(random.randint(0, 9)) for _ in range(6))
     return code
 

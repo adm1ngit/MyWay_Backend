@@ -61,7 +61,7 @@ class UserVerification(models.Model):
 
 class LoginUserVerification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    phone_number = models.CharField(max_length=15, unique=True)  # Assuming unique phone numbers
-    email = models.EmailField(unique=True)  # Assuming unique emails
+    phone_number = models.CharField(max_length=15, unique=True)
+    email = models.EmailField(unique=True)  
     phone_verified = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)

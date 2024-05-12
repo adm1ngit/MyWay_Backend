@@ -8,7 +8,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
     confirm_password = serializers.CharField(write_only=True)
 
     class Meta:
-        model = User  # Update with your model name
+        model = User  
         fields = ['first_name', 'last_name', 'phone_number', 'email', 'password', 'confirm_password']
 
     def create(self, validated_data):
@@ -19,9 +19,8 @@ class RegisterUserSerializer(serializers.ModelSerializer):
             email=validated_data.get('email'),  # Optional
             password=validated_data['password'],
         )
-        user.is_verified = False  # Set verification flag to False initially
+        user.is_verified = False
         user.save()
-        # Send verification code using Twilio Verify (refer to Twilio documentation)
         return user
 
 class ConfirmationCodeSerializer(serializers.Serializer):

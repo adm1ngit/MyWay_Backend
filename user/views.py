@@ -76,10 +76,9 @@ class SendVerificationCodeView(APIView):
 
         email = serializer.validated_data["email"]
 
-        # Generate verification code
+
         verification_code = str(random.randint(100000, 999999))
 
-        # Send verification code using SMTP
         subject = "Verification Code"
         message = f"Your verification code is: {verification_code}"
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
@@ -125,35 +124,35 @@ class LoginView(APIView):
         phone_number = request.data.get("phone_number")
         email = request.data.get("email")
 
-        # Check if user exists (optional, based on your use case)
+
         try:
-            user = User.objects.get(email=email)  # Assuming email is used for login
+            user = User.objects.get(email=email)  
         except User.DoesNotExist:
             return Response({"message": "Foydalanuvchi Topilmadi"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Generate verification codes
+   
         phone_verification_code = str(random.randint(100000, 999999))
         email_verification_code = str(random.randint(100000, 999999))
 
-        # Save or update verification codes
+        
         user_verification, created = UserVerification.objects.get_or_create(user=user)
-        user_verification.phone_number = phone_number  # Update phone number if not provided earlier
+        user_verification.phone_number = phone_number 
         user_verification.phone_verification_code = phone_verification_code
         user_verification.email_verification_code = email_verification_code
         user_verification.save()
 
-        # Send verification codes (Phone and Email)
+       
         account_sid = os.getenv("ACCOUNT_SID")
         auth_token = os.getenv("AUTH_TOKEN")
         client = Client(account_sid, auth_token)
-        if phone_number:  # Send SMS if phone number provided
+        if phone_number:  
             client.messages.create(
                  to=phone_number,
                  from_=os.getenv("TWILIO_PHONE_NUMBER"),
                  body=f"Your phone verification code is: {phone_verification_code}"
             )
 
-        if email:  # Send email if email provided
+        if email:  
             subject = "Email Verification Code"
             message = f"Your email verification code is: {email_verification_code}"
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email])
