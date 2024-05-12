@@ -17,7 +17,7 @@ DEBUG = True
 
 load_dotenv()
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['192.168.100.50']
 
 
 # Application definition

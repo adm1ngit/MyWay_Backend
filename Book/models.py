@@ -21,7 +21,6 @@ class YHQQoidlarCategoryRu(models.Model):
 class YHQQoidalarBook(models.Model):
     titleUz = models.CharField(max_length=150)
     titleRu = models.CharField(max_length=150)
-    # url_uz = models.FileField(upload_to='Books/qoidalar')
     url_ru = models.FileField(upload_to='Books/qoidalar')
     categoryRu = models.ForeignKey(YHQQoidlarCategoryRu, on_delete=models.CASCADE)
     url_uz = models.FileField(upload_to='Books/qoidalar')
