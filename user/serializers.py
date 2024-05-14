@@ -9,14 +9,14 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User  
-        fields = ['first_name', 'last_name', 'phone_number', 'email', 'password', 'confirm_password']
+        fields = "__all__"
 
     def create(self, validated_data):
         user = User.objects.create_user(
             first_name=validated_data['first_name'],
             last_name=validated_data['last_name'],
             phone_number=validated_data['phone_number'],
-            email=validated_data.get('email'),  # Optional
+            email=validated_data.get('email'), 
             password=validated_data['password'],
         )
         user.is_verified = False
@@ -27,8 +27,6 @@ class ConfirmationCodeSerializer(serializers.Serializer):
     phone_number = serializers.CharField(max_length=20)
     code = serializers.CharField(max_length=6)
 
-
-
 class TwilioVerificationService:
     def __init__(self):
         self.client = Client(os.getenv("ACCOUNT_SID"), os.getenv("AUTH_TOKEN"))
@@ -36,7 +34,8 @@ class TwilioVerificationService:
 class UserVerificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserVerification
-        fields = ['email']
+        fields = ["email", "verification_code"]
+
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
